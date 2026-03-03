@@ -1,0 +1,52 @@
+# Gitleaks configuration for ResunaWeb
+# Docs: https://github.com/gitleaks/gitleaks
+
+title = "ResunaWeb Gitleaks Config"
+
+# ── Regras customizadas do projeto ────────────────────────────────────────────
+
+[[rules]]
+id = "openrouter-api-key"
+description = "OpenRouter API Key"
+regex = "sk-or-v1-[a-f0-9]{64}"
+tags = ["api-key", "openrouter"]
+
+[[rules]]
+id = "cloudflare-turnstile-secret"
+description = "Cloudflare Turnstile Secret Key"
+regex = "0x4AAAAAAA[A-Za-z0-9_-]{20,}"
+tags = ["api-key", "cloudflare"]
+
+[[rules]]
+id = "firebase-private-key"
+description = "Firebase / GCP Service Account Private Key"
+regex = "-----BEGIN PRIVATE KEY-----"
+tags = ["private-key", "firebase", "gcp"]
+
+[[rules]]
+id = "firebase-private-key-id"
+description = "Firebase Service Account private_key_id field"
+regex = '"private_key_id"\s*:\s*"[a-f0-9]{40}"'
+tags = ["private-key", "firebase"]
+
+# ── Ignorar arquivos de teste e placeholders ──────────────────────────────────
+
+[allowlist]
+description = "Placeholders e arquivos que nao sao segredos reais"
+
+# Paths a ignorar (regex sobre o caminho do arquivo)
+paths = [
+    "src/test/.*",
+    "\\.gitleaks\\.toml",
+]
+
+# Padroes que nao sao segredos reais (placeholders em docs/exemplos)
+regexes = [
+    "sk-or-v1-REDACTED",
+    "sk-or-v1-YOUR_ACTUAL_KEY_HERE",
+    "sk-or-v1-YOUR_KEY",
+    "YOUR_ACTUAL_KEY_HERE",
+    "SEU_TOKEN_AQUI",
+    # Placeholder de chave privada em documentacao (conteudo e "...")
+    "BEGIN PRIVATE KEY-----\\\\n\\.\\.\\.",
+]

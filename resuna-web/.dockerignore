@@ -1,0 +1,18 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+# .env.production é necessário — não excluir
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+playwright-report
+test-results
+dogfood-output

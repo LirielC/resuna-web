@@ -1,0 +1,12 @@
+# Ignorar arquivos pesados desnecessários para o build
+node_modules/
+.next/
+out/
+*.log
+test-results/
+playwright-report/
+dogfood-output/
+.git/
+
+# .env.production é necessário para o build do Next.js (apenas variáveis públicas NEXT_PUBLIC_*)
+# Por isso NÃO está listado aqui

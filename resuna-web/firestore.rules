@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== HELPER FUNCTIONS =====
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    function isValidEmail() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    function hasValidUserId() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+
+    function userIdNotChanged() {
+      return !('userId' in request.resource.data) ||
+             request.resource.data.userId == resource.data.userId;
+    }
+
+    // ===== RESUMES =====
+
+    match /resumes/{resumeId} {
+      allow read:   if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidEmail() && hasValidUserId() &&
+                       request.resource.data.keys().hasAll(['userId', 'title', 'createdAt']) &&
+                       request.resource.data.title is string &&
+                       request.resource.data.title.size() <= 200;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+                       userIdNotChanged();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== COVER LETTERS =====
+
+    function isValidCoverLetter() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['userId', 'resumeId', 'jobTitle', 'company', 'content', 'tone']) &&
+             d.userId is string && d.userId.size() <= 128 &&
+             d.resumeId is string && d.resumeId.size() <= 128 &&
+             d.jobTitle is string && d.jobTitle.size() <= 200 &&
+             d.company is string && d.company.size() <= 200 &&
+             d.content is string && d.content.size() <= 20000 &&
+             d.tone in ['professional', 'enthusiastic', 'formal'];
+    }
+
+    match /coverLetters/{letterId} {
+      allow read:   if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidEmail() && hasValidUserId() &&
+                       isValidCoverLetter();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+                       userIdNotChanged() && isValidCoverLetter();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== ATS ANALYSES (root-level) =====
+    // Escrita apenas pelo backend (Admin SDK). Leitura somente pelo dono.
+
+    match /ats_analyses/{analysisId} {
+      allow read:  if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ===== USERS =====
+
+    match /users/{userId} {
+      allow read:   if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && hasValidUserId();
+      allow update: if isOwner(userId) && userIdNotChanged();
+      allow delete: if isOwner(userId);
+
+      match /ats_analyses/{analysisId} {
+        allow read:  if isOwner(userId);
+        allow write: if false;
+      }
+    }
+
+    // ===== USER SUBSCRIPTIONS =====
+    // Escrita apenas pelo backend.
+
+    match /user_subscriptions/{userId} {
+      allow read:  if isOwner(userId) || isAdmin();
+      allow write: if false;
+    }
+
+    match /subscriptions/{userId} {
+      allow read:  if isOwner(userId) || isAdmin();
+      allow write: if false;
+    }
+
+    // ===== USER PROFILES =====
+
+    match /user_profiles/{userId} {
+      allow read:  if isOwner(userId) || isAdmin();
+      allow write: if false;
+    }
+
+    // ===== FEATURE FLAGS =====
+
+    match /feature_flags/{userId} {
+      allow read:  if isOwner(userId) || isAdmin();
+      allow write: if false;
+    }
+
+    // ===== BILLING EVENTS =====
+
+    match /billing_events/{eventId} {
+      allow read:  if isAdmin() ||
+                      (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ===== USER ACTIVITIES (admin only) =====
+
+    match /user_activities/{activityId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    // ===== USAGE AGGREGATES (admin only) =====
+
+    match /usage_aggregates/{aggregateId} {
+      allow read:  if isAdmin();
+      allow write: if false;
+    }
+
+    // ===== INITIAL CREDITS COUNTERS (server only) =====
+
+    match /initial_credits_counters/{counterId} {
+      allow read, write: if false;
+    }
+
+    // ===== AUDIT LOGS =====
+
+    match /audit_logs/{logId} {
+      allow read:  if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ===== DENY ALL (default) =====
+    // Qualquer coleção não listada acima é bloqueada por padrão.
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

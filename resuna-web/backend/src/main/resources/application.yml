@@ -1,0 +1,92 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: resuna-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:}
+
+# Firebase Configuration
+firebase:
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-admin-key.json}
+  project-id: ${FIREBASE_PROJECT_ID:resuna-app}
+
+# CORS Configuration
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,x-client-fingerprint}
+  allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+
+# ATS Engine Configuration
+ats:
+  engine:
+    url: ${ATS_ENGINE_URL:http://localhost:8000}
+
+# OpenRouter AI Configuration
+openrouter:
+  api:
+    key: ${OPENROUTER_API_KEY}
+    model: ${OPENROUTER_MODEL:upstage/solar-pro-3:free}
+    fallback-models: ${OPENROUTER_FALLBACK_MODELS:liquid/lfm-2.5-1.2b-thinking:free,arcee-ai/trinity-mini:free,mistralai/mistral-7b-instruct:free}
+  app:
+    name: ${OPENROUTER_APP_NAME:ResunaWeb}
+    url: ${OPENROUTER_APP_URL:https://github.com/yourusername/resunaweb}
+  retry:
+    enabled: ${OPENROUTER_RETRY_ENABLED:true}
+    max-attempts: ${OPENROUTER_RETRY_MAX_ATTEMPTS:3}
+
+# Logging
+logging:
+  level:
+    com.resuna: INFO
+    org.springframework.web: INFO
+
+# App Configuration
+app:
+  # Set your email here to become the initial admin (must sign in first)
+  initial-admin-email: ${INITIAL_ADMIN_EMAIL:}
+  # Optional: only this email can access admin endpoints
+  super-admin-email: ${SUPER_ADMIN_EMAIL:}
+  # Keep false in production; set true locally for verbose errors
+  debug: ${APP_DEBUG:false}
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  general:
+    max-requests: ${RATE_LIMIT_GENERAL_MAX:60}
+    window-seconds: ${RATE_LIMIT_GENERAL_WINDOW:60}
+  ai:
+    max-requests: ${RATE_LIMIT_AI_MAX:5}  # Reduced from 10 to 5 for better abuse prevention
+    window-seconds: ${RATE_LIMIT_AI_WINDOW:60}
+    daily-max: ${RATE_LIMIT_AI_DAILY_MAX:30}  # NEW: Daily cap
+  ats:
+    max-requests: ${RATE_LIMIT_ATS_MAX:10}
+    window-seconds: ${RATE_LIMIT_ATS_WINDOW:60}
+    daily-max: ${RATE_LIMIT_ATS_DAILY_MAX:50}  # NEW: Daily cap
+  export:  # NEW: Rate limit for PDF/DOCX exports
+    max-requests: ${RATE_LIMIT_EXPORT_MAX:10}
+    window-seconds: ${RATE_LIMIT_EXPORT_WINDOW:300}  # 10 exports per 5 minutes
+
+# Free & Open-Source Model - Daily Credits System
+credits:
+  daily-limit: ${CREDITS_DAILY_LIMIT:10}  # Free credits per user per day
+  max-accounts-per-ip: ${CREDITS_MAX_ACCOUNTS_PER_IP:3}  # Prevent abuse
+  require-email-verification: ${CREDITS_REQUIRE_EMAIL_VERIFICATION:true}  # Prevent bot accounts
+  reset-time: ${CREDITS_RESET_TIME:00:00}  # UTC time for daily reset
+
+# Cloudflare Turnstile CAPTCHA (Free & Privacy-Friendly)
+turnstile:
+  secret-key: ${TURNSTILE_SECRET_KEY:}
+  enabled: ${TURNSTILE_ENABLED:true}  # Set TURNSTILE_ENABLED=false in dev when keys are not configured
+
+security:
+  trust-cloudflare-ip: ${TRUST_CLOUDFLARE_IP:false}
+
+# Billing system removed - Free & Open-Source model
+# billing:
+#   cooldown-hours: ${BILLING_COOLDOWN_HOURS:4}
+#   max-purchases-per-day: ${BILLING_MAX_PURCHASES_PER_DAY:3}
+#   require-payment-verification: ${BILLING_REQUIRE_VERIFICATION:true}
+#   allow-test-purchases: ${BILLING_ALLOW_TEST_PURCHASES:false}

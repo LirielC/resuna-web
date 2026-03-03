@@ -1,0 +1,12 @@
+target/
+.env
+.env.*
+*.env
+*.log
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+src/main/resources/firebase-admin-key.json
+src/main/resources/firebase-service-account.json

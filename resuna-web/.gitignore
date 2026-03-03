@@ -1,0 +1,21 @@
+node_modules/
+.next/
+out/
+
+# Env / secrets
+.env
+.env.*
+backend/src/main/resources/firebase-service-account.json
+backend/src/main/resources/firebase-admin-key.json
+
+# Java
+backend/target/
+*.class
+
+# Python
+backend/ats-engine/venv/
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,79 @@
+# ── Secrets & Credentials (NEVER commit these) ───────────────────────────────
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.p12
+*.jks
+*-admin-key.json
+*-service-account.json
+firebase-admin-key.json
+firebase-service-account.json
+resuna-web/backend/src/main/resources/firebase-admin-key.json
+resuna-web/backend/src/main/resources/firebase-service-account.json
+resuna-web/backend/.env
+resuna-web/backend/.env.*
+resuna-web/.env
+resuna-web/.env.*
+resuna-web/.env.local
+
+# ── Build artifacts ───────────────────────────────────────────────────────────
+resuna-web/backend/target/
+resuna-web/.next/
+resuna-web/out/
+resuna-web/node_modules/
+__pycache__/
+*.class
+*.pyc
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+backend.log
+backend_output.log
+
+# ── OS / IDE ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+
+# ── Tool / agent config (not project code) ────────────────────────────────────
+.agents/
+.claude/
+skills-lock.json
+
+# ── Internal docs & reports (not for public repo) ─────────────────────────────
+RELATORIO_SEGURANCA*.md
+SECURITY_COMPLETED_TODAY.md
+SECURITY_FIXES_*.md
+OWASP_SECURITY_AUDIT.md
+README_SECURITY.md
+ARQUITETURA_CODEBASE.md
+FEATURES_BACKLOG.md
+CLOUDFLARE_*.md
+DEPLOY_GUIDE.md
+FIREBASE_CONFIGURADO.md
+FIREBASE_SETUP_NOVO.md
+FREE_PROTECTION_STRATEGY.md
+STATUS_FINAL.md
+TURNSTILE_IMPLEMENTATION.md
+TURNSTILE_SETUP_GUIDE.md
+build_output.txt
+npm-audit-report.json
+
+# ── Test/dogfood output ───────────────────────────────────────────────────────
+dogfood-output/
+resuna-web/dogfood-output/
+resuna-web/test-results/
+resuna-web/playwright-report/
+resuna-web/tsconfig.tsbuildinfo
+resuna-web/frontend.log
+resuna-web/backend/compile_output.txt
+resuna-web/backend/data/
+
+# ── Sample PII data (never commit) ───────────────────────────────────────────
+resuna-web/Curriculo_*.json
+resuna-web/Curriculo_*.pdf
