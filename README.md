@@ -31,7 +31,7 @@ Plataforma completa para criacao e otimizacao de curriculos, com analise de comp
 
 ## Visao geral
 
-O Resuna e um SaaS de curriculos com foco em rastreadores automatizados de candidatos (ATS). Ele oferece um editor de curriculos com preenchimento estruturado, analise de compatibilidade com vagas, sugestoes de melhoria via IA, geracao de carta de apresentacao e exportacao para PDF e DOCX — tudo a partir de um unico painel.
+O Resuna é um app web de curriculos com foco em rastreadores automatizados de candidatos (ATS). Ele oferece um editor de curriculos com preenchimento estruturado, analise de compatibilidade com vagas, sugestoes de melhoria via IA, geracao de carta de apresentacao e exportacao para PDF e DOCX — tudo a partir de um unico painel.
 
 Os dados do usuario sao armazenados localmente no navegador (localStorage) por padrao, sem necessidade de sincronizacao com servidor para as operacoes do editor. As operacoes de IA e exportacao sao realizadas pelo backend com autenticacao obrigatoria.
 
