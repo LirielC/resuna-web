@@ -1,26 +1,36 @@
-import { Resume, ATSAnalysisRequest, ATSAnalysisResult, CritiqueResponse, CoverLetter } from './types';
+import { Resume, ATSAnalysisRequest, ATSAnalysisResult, CritiqueResponse, CoverLetter, Experience, Education, Project, Certification } from './types';
 import { auth } from './firebase';
 import { localResumeStorage, localCoverLetterStorage } from './storage';
 
-const API_BASE_URL = (() => {
-    const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-    if (
-        process.env.NODE_ENV === 'production' &&
-        url.startsWith('http://') &&
-        !url.startsWith('http://localhost')
-    ) {
-        throw new Error(
-            `[Security] NEXT_PUBLIC_API_URL must use HTTPS in production. Got: ${url}`
-        );
-    }
-    return url;
-})();
+const API_BASE_URL = '';
 
 interface ApiErrorPayload {
     errorCode?: string;
     message?: string;
     error?: string;
     retryable?: boolean;
+}
+
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+        try {
+            const payload = (await response.json()) as ApiErrorPayload;
+            return payload.message || payload.error || fallback;
+        } catch {
+            // Fall back to text parsing below.
+        }
+    }
+
+    try {
+        const text = await response.text();
+        if (text && text.trim()) return text.trim();
+    } catch {
+        // Ignore and return fallback below.
+    }
+
+    return fallback;
 }
 
 export class ApiRequestError extends Error {
@@ -178,7 +188,9 @@ export const resumeApi = {
         const token = await getAuthToken();
         if (!token) throw new Error('Not authenticated');
 
-        const localeParam = locale ? `?locale=${locale}` : '';
+        // Use explicit locale, fallback to resume's own language field, then pt-BR
+        const effectiveLocale = locale || resume.language || 'pt-BR';
+        const localeParam = `?locale=${effectiveLocale}`;
         const response = await fetch(`${API_BASE_URL}/api/resumes/export/pdf${localeParam}`, {
             method: 'POST',
             headers: {
@@ -197,14 +209,15 @@ export const resumeApi = {
     },
 
     // Download DOCX — sends full resume in POST body
-    async downloadDocx(id: string): Promise<Blob> {
+    async downloadDocx(id: string, locale?: string): Promise<Blob> {
         const resume = localResumeStorage.getById(id);
         if (!resume) throw new Error('Resume not found');
 
         const token = await getAuthToken();
         if (!token) throw new Error('Not authenticated');
 
-        const response = await fetch(`${API_BASE_URL}/api/resumes/export/docx`, {
+        const effectiveLocale = locale || resume.language || 'pt-BR';
+        const response = await fetch(`${API_BASE_URL}/api/resumes/export/docx?locale=${effectiveLocale}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -264,8 +277,8 @@ export const resumeApi = {
         }
 
         const translatedResume: Resume = await response.json();
-        // Save the translated resume as a new entry in localStorage
-        const saved = localResumeStorage.save({ ...translatedResume, id: undefined });
+        // Save the translated resume as a new entry in localStorage (mark as English)
+        const saved = localResumeStorage.save({ ...translatedResume, id: undefined, language: 'en' });
         return saved;
     },
 
@@ -277,11 +290,11 @@ export const resumeApi = {
         linkedin: string;
         github: string;
         summary: string;
-        experience: string;
-        education: string;
-        projects: string;
-        certifications: string;
-        awards: string;
+        experience: Experience[];
+        education: Education[];
+        projects: Project[];
+        certifications: Certification[];
+        awards: string[];
         skills: string[];
         rawText: string;
     }> {
@@ -302,8 +315,8 @@ export const resumeApi = {
         });
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to import PDF');
+            const message = await readErrorMessage(response, `Failed to import PDF (HTTP ${response.status})`);
+            throw new Error(message);
         }
 
         return response.json();
@@ -340,8 +353,8 @@ export const atsApi = {
         }
 
         if (!response.ok) {
-            const error = await response.text();
-            throw new Error(error || `HTTP ${response.status}`);
+            const message = await readErrorMessage(response, `HTTP ${response.status}`);
+            throw new Error(message);
         }
 
         return response.json();
@@ -361,9 +374,15 @@ export const atsApi = {
         return response.json();
     },
 
-    async getScore(resumeId: string): Promise<{ score: number; matchedKeywords: number; totalKeywords: number }> {
-        const response = await fetchWithAuth(`/api/ats/score/${resumeId}`);
-        return response.json();
+    async getScore(resumeId: string): Promise<{ score: number; matchedKeywords: number; totalKeywords: number } | null> {
+        try {
+            const response = await fetchWithAuth(`/api/ats/score/${resumeId}`);
+            return response.json();
+        } catch (err) {
+            // 404 = resume has never been analyzed — not an error, just no score yet
+            if (err instanceof ApiRequestError && err.status === 404) return null;
+            throw err;
+        }
     },
 
     async delete(id: string): Promise<void> {
@@ -395,11 +414,14 @@ export const userApi = {
         const response = await fetchWithAuth('/api/users/stats');
         return response.json();
     },
+    async deleteAccount(): Promise<void> {
+        await fetchWithAuth('/api/users/me', { method: 'DELETE' });
+    },
 };
 
 // Subscription API
 export const subscriptionApi = {
-    async getCredits(): Promise<{ creditsRemaining: number; creditsUsed: number }> {
+    async getCredits(): Promise<{ creditsRemaining: number; creditsUsed: number; dailyLimit: number }> {
         const response = await fetchWithAuth('/api/subscription/credits');
         return response.json();
     },
@@ -522,7 +544,7 @@ export const coverLetterApi = {
         return localCoverLetterStorage.getByResume(resumeId);
     },
 
-    async getAll(_userId: string): Promise<CoverLetter[]> {
+    async getAll(): Promise<CoverLetter[]> {
         return localCoverLetterStorage.getAll();
     },
 

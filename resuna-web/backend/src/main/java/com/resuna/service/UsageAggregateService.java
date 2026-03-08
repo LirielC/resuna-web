@@ -1,10 +1,10 @@
 package com.resuna.service;
 
+import com.google.cloud.Timestamp;
 import com.resuna.model.UsageAggregate;
 import com.resuna.repository.UsageAggregateRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.WeekFields;
@@ -49,7 +49,7 @@ public class UsageAggregateService {
         Map<String, Long> counts = aggregate.getActionCounts();
         counts.put(action, counts.getOrDefault(action, 0L) + 1L);
         aggregate.setTotalRequests(aggregate.getTotalRequests() + 1);
-        aggregate.setUpdatedAt(Instant.now());
+        aggregate.setUpdatedAt(Timestamp.now());
         repository.save(aggregate);
     }
 

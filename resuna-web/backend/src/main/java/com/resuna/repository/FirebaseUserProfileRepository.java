@@ -83,4 +83,9 @@ public class FirebaseUserProfileRepository implements UserProfileRepository {
             return profiles;
         }
     }
+
+    @Override
+    public void deleteByUserId(String userId) throws Exception {
+        firestore.collection(COLLECTION_NAME).document(userId).delete().get();
+    }
 }

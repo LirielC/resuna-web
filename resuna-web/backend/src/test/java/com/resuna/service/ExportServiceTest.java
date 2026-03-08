@@ -385,7 +385,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("Full resume generates a valid, non-empty DOCX")
         void fullResume_generatesValidDocx() throws Exception {
-            byte[] docx = exportService.exportToDocx(fullResume());
+            byte[] docx = exportService.exportToDocx(fullResume(), "pt-BR");
 
             assertNotNull(docx);
             assertTrue(docx.length > 0, "DOCX should not be empty");
@@ -397,7 +397,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("DOCX contains the candidate's full name")
         void docx_containsFullName() throws Exception {
-            byte[] docx = exportService.exportToDocx(fullResume());
+            byte[] docx = exportService.exportToDocx(fullResume(), "pt-BR");
             String text = extractDocxText(docx);
             assertTrue(text.contains("John Doe"), "DOCX should contain full name");
         }
@@ -405,7 +405,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("DOCX contains contact information")
         void docx_containsContactInfo() throws Exception {
-            byte[] docx = exportService.exportToDocx(fullResume());
+            byte[] docx = exportService.exportToDocx(fullResume(), "pt-BR");
             String text = extractDocxText(docx);
 
             assertTrue(text.contains("john@example.com"), "Should contain email");
@@ -413,24 +413,39 @@ class ExportServiceTest {
         }
 
         @Test
-        @DisplayName("DOCX contains all section headers")
+        @DisplayName("DOCX contains all section headers (pt-BR)")
         void docx_containsSectionHeaders() throws Exception {
-            byte[] docx = exportService.exportToDocx(fullResume());
+            byte[] docx = exportService.exportToDocx(fullResume(), "pt-BR");
+            String text = extractDocxText(docx);
+
+            assertTrue(text.contains("RESUMO"));
+            assertTrue(text.contains("EXPERIÊNCIA"));
+            assertTrue(text.contains("PROJETOS"));
+            assertTrue(text.contains("FORMAÇÃO"));
+            assertTrue(text.contains("COMPETÊNCIAS"));
+            assertTrue(text.contains("CERTIFICAÇÕES"));
+            assertTrue(text.contains("IDIOMAS"));
+        }
+
+        @Test
+        @DisplayName("DOCX contains all section headers (en)")
+        void docx_containsSectionHeaders_en() throws Exception {
+            byte[] docx = exportService.exportToDocx(fullResume(), "en");
             String text = extractDocxText(docx);
 
             assertTrue(text.contains("SUMMARY"));
             assertTrue(text.contains("EXPERIENCE"));
             assertTrue(text.contains("PROJECTS"));
             assertTrue(text.contains("EDUCATION"));
-            assertTrue(text.contains("SKILLS"));
-            assertTrue(text.contains("CERTIFICATIONS"));
+            assertTrue(text.contains("TECHNICAL SKILLS"));
+            assertTrue(text.contains("COURSES / CERTIFICATIONS"));
             assertTrue(text.contains("LANGUAGES"));
         }
 
         @Test
         @DisplayName("DOCX contains experience details")
         void docx_containsExperience() throws Exception {
-            byte[] docx = exportService.exportToDocx(fullResume());
+            byte[] docx = exportService.exportToDocx(fullResume(), "pt-BR");
             String text = extractDocxText(docx);
 
             assertTrue(text.contains("Senior Software Engineer"));
@@ -441,7 +456,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("DOCX contains skills list")
         void docx_containsSkills() throws Exception {
-            byte[] docx = exportService.exportToDocx(fullResume());
+            byte[] docx = exportService.exportToDocx(fullResume(), "pt-BR");
             String text = extractDocxText(docx);
 
             assertTrue(text.contains("Java"));
@@ -451,7 +466,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("Minimal resume generates valid DOCX")
         void minimalResume_generatesValidDocx() throws Exception {
-            byte[] docx = exportService.exportToDocx(minimalResume());
+            byte[] docx = exportService.exportToDocx(minimalResume(), "pt-BR");
 
             assertNotNull(docx);
             assertTrue(docx.length > 0);
@@ -462,11 +477,11 @@ class ExportServiceTest {
         @Test
         @DisplayName("Empty sections do not generate headers in DOCX")
         void emptySections_noHeaders() throws Exception {
-            byte[] docx = exportService.exportToDocx(minimalResume());
+            byte[] docx = exportService.exportToDocx(minimalResume(), "pt-BR");
             String text = extractDocxText(docx);
 
-            assertFalse(text.contains("EXPERIENCE"));
-            assertFalse(text.contains("EDUCATION"));
+            assertFalse(text.contains("EXPERIÊNCIA"));
+            assertFalse(text.contains("FORMAÇÃO"));
         }
     }
 
@@ -634,7 +649,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("DOCX also handles Portuguese accented characters")
         void docx_portugueseChars() throws Exception {
-            byte[] docx = exportService.exportToDocx(portugueseResume());
+            byte[] docx = exportService.exportToDocx(portugueseResume(), "pt-BR");
             String text = extractDocxText(docx);
 
             assertTrue(text.contains("João"), "DOCX should render ã correctly");
@@ -769,7 +784,7 @@ class ExportServiceTest {
         @Test
         @DisplayName("Large resume DOCX generates without errors")
         void largeResume_docxGenerates() throws Exception {
-            byte[] docx = exportService.exportToDocx(largeResume());
+            byte[] docx = exportService.exportToDocx(largeResume(), "pt-BR");
 
             assertNotNull(docx);
             assertTrue(docx.length > 0);

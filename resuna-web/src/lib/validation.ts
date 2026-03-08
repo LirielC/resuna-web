@@ -95,6 +95,19 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
+ * Aplica máscara de telefone brasileiro enquanto o usuário digita.
+ * Exemplos: "21999999999" → "(21) 99999-9999", "2132334455" → "(21) 3233-4455"
+ */
+export function maskPhoneBR(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+/**
  * Valida telefone brasileiro (formato flexível)
  */
 export function isValidPhoneBR(phone: string): boolean {

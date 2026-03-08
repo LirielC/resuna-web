@@ -33,7 +33,12 @@ public class FirestoreInitialCreditsCounterRepository implements InitialCreditsC
             if (!doc.exists()) {
                 return Optional.empty();
             }
-            return Optional.ofNullable(doc.toObject(InitialCreditsCounter.class));
+            try {
+                return Optional.ofNullable(doc.toObject(InitialCreditsCounter.class));
+            } catch (RuntimeException e) {
+                logger.warn("Failed to deserialize InitialCreditsCounter ({}__{}): {}", type, key, e.getMessage());
+                return Optional.empty();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return Optional.empty();

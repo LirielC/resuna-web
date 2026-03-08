@@ -8,46 +8,77 @@ import {
     User,
     Mail,
     Calendar,
-    Shield,
     LogOut,
     PenTool,
     FileText,
     Star,
     ChevronRight,
-    ArrowLeft
+    ArrowLeft,
+    Trash2,
+    AlertTriangle,
+    Zap
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
-import { userApi } from "@/lib/api";
+import { userApi, subscriptionApi } from "@/lib/api";
+import { localResumeStorage, localCoverLetterStorage } from "@/lib/storage";
 import { useTranslation } from "@/contexts/LanguageContext";
-
-// Design System: Editorial Luxury
-const THEME = {
-    bg: "bg-[#F8F6F1]", // Cream Paper
-    text: "text-stone-900",
-    textMuted: "text-stone-500",
-    accent: "text-orange-600",
-    border: "border-stone-200",
-    fontDisplay: "font-display", // Playfair Display
-    fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
 
 export default function AccountPage() {
     const { user, signOut } = useAuth();
     const router = useRouter();
     const { t } = useTranslation();
     const [stats, setStats] = useState<{ resumeCount: number; avgAtsScore: number } | null>(null);
+    const [credits, setCredits] = useState<{ creditsRemaining: number; dailyLimit: number } | null>(null);
+    const [recentResumes, setRecentResumes] = useState<Array<{ id?: string; title: string; updatedAt?: string }>>([]);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     useEffect(() => {
         if (user) {
-            userApi.getStats().then(setStats).catch(console.error);
+            userApi.getStats().then(setStats).catch(() => {});
+            subscriptionApi.getCredits().then(setCredits).catch(() => {});
+            const all = localResumeStorage.getAll();
+            const sorted = [...all]
+                .sort((a, b) => {
+                    const da = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                    const db = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                    return db - da;
+                })
+                .slice(0, 3);
+            setRecentResumes(sorted);
         }
     }, [user]);
 
     const handleSignOut = async () => {
         await signOut();
         router.push("/");
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!user) return;
+        setIsDeleting(true);
+        setDeleteError(null);
+        try {
+            // Backend deletes Firebase Auth user via Admin SDK + all Firestore data
+            await userApi.deleteAccount();
+            localResumeStorage.clear();
+            localCoverLetterStorage.clear();
+            // Sign out locally — Auth user was already deleted on the backend
+            await signOut();
+            router.push("/");
+        } catch (err) {
+            if (err instanceof Error) {
+                setDeleteError(err.message);
+            } else {
+                setDeleteError(t("common.error"));
+            }
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     if (!user) {
@@ -184,39 +215,34 @@ export default function AccountPage() {
                                     </div>
                                     <h3 className="text-sm font-bold uppercase tracking-widest text-stone-500">{t('account.avgAtsScore')}</h3>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Section: Subscription */}
-                        <div>
-                            <h2 className={`${THEME.fontDisplay} text-2xl font-medium text-stone-900 mb-6 flex items-center gap-3`}>
-                                {t('account.authorPlan')}
-                                <div className="h-px bg-stone-200 flex-1 ml-4" />
-                            </h2>
-
-                            <div className="bg-stone-900 text-white p-8 shadow-2xl relative overflow-hidden group">
-                                {/* Texture on dark card */}
-                                <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-repeat" />
-
-                                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Shield className="w-5 h-5 text-orange-400" />
-                                            <span className="text-orange-400 font-bold tracking-widest uppercase text-xs">{t('account.currentPlan')}</span>
+                                <div className="bg-white p-6 border border-stone-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="p-3 bg-emerald-50 rounded-full">
+                                            <Zap className="w-6 h-6 text-emerald-600" />
                                         </div>
-                                        <h3 className="text-3xl font-display mb-2">{t('account.freeEdition')}</h3>
-                                        <p className="text-stone-400 text-sm max-w-md">
-                                            {t('account.freeEditionDesc')}
-                                        </p>
+                                        <span className="text-4xl font-display font-medium text-stone-900">
+                                            {credits ? credits.creditsRemaining : "—"}
+                                            <span className="text-lg text-stone-400 font-sans font-normal">
+                                                {credits ? ` / ${credits.dailyLimit}` : ""}
+                                            </span>
+                                        </span>
                                     </div>
-                                    <button className="bg-white text-stone-900 px-6 py-3 font-medium hover:bg-orange-50 transition-colors shadow-lg active:transform active:scale-95">
-                                        {t('account.upgradePlan')}
-                                    </button>
+                                    <h3 className="text-sm font-bold uppercase tracking-widest text-stone-500">Créditos de IA hoje</h3>
+                                    {credits && (
+                                        <div className="mt-3 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-emerald-500 rounded-full transition-all"
+                                                style={{ width: `${Math.round((credits.creditsRemaining / credits.dailyLimit) * 100)}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-stone-400 mt-2">Reinicia diariamente à meia-noite (horário de Brasília)</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Section: Recent Activity (Mock - keeping for now as dynamic list requires more complex query) */}
+                        {/* Section: Recent Manuscripts */}
                         <div>
                             <h2 className={`${THEME.fontDisplay} text-2xl font-medium text-stone-900 mb-6 flex items-center gap-3`}>
                                 {t('account.recentManuscripts')}
@@ -224,20 +250,97 @@ export default function AccountPage() {
                             </h2>
 
                             <div className="bg-white border border-stone-200 divide-y divide-stone-100">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors group cursor-pointer">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-stone-100 flex items-center justify-center text-stone-400 font-serif text-lg">
-                                                <FileText className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-medium text-stone-900 group-hover:text-orange-600 transition-colors">{t('account.softwareEngineerResume')}{i}</h4>
-                                                <p className="text-xs text-stone-500">{t('account.edited2DaysAgo')}</p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight className="w-4 h-4 text-stone-300 group-hover:text-stone-500" />
+                                {recentResumes.length === 0 ? (
+                                    <div className="p-8 text-center text-stone-400 font-serif italic">
+                                        {t('account.noResumesYet')}
                                     </div>
-                                ))}
+                                ) : (
+                                    recentResumes.map((resume) => (
+                                        <Link
+                                            key={resume.id ?? resume.title}
+                                            href={`/resumes/${resume.id ?? ''}`}
+                                            className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-stone-100 flex items-center justify-center text-stone-400">
+                                                    <FileText className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-medium text-stone-900 group-hover:text-orange-600 transition-colors">
+                                                        {resume.title || t('account.untitledResume')}
+                                                    </h4>
+                                                    <p className="text-xs text-stone-500">
+                                                        {resume.updatedAt
+                                                            ? new Date(resume.updatedAt).toLocaleDateString()
+                                                            : "—"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-stone-300 group-hover:text-stone-500" />
+                                        </Link>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Section: Danger Zone */}
+                        <div>
+                            <h2 className={`${THEME.fontDisplay} text-2xl font-medium text-red-700 mb-6 flex items-center gap-3`}>
+                                <AlertTriangle className="w-5 h-5" />
+                                {t('account.dangerZone')}
+                                <div className="h-px bg-red-200 flex-1 ml-4" />
+                            </h2>
+
+                            <div className="bg-white border border-red-200 p-6">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div>
+                                        <p className="font-semibold text-stone-900">{t('account.deleteAccount')}</p>
+                                        <p className="text-sm text-stone-500 mt-1">{t('account.deleteAccountDesc')}</p>
+                                    </div>
+                                    {!isConfirmingDelete && (
+                                        <Button
+                                            variant="outline"
+                                            className="shrink-0 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 transition-colors"
+                                            onClick={() => setIsConfirmingDelete(true)}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            {t('account.deleteAccount')}
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {isConfirmingDelete && (
+                                    <div className="mt-6 pt-6 border-t border-red-100 space-y-4">
+                                        <p className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                                            <AlertTriangle className="w-4 h-4" />
+                                            {t('account.deleteAccountConfirm')}
+                                        </p>
+                                        {deleteError && (
+                                            <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-3">
+                                                {deleteError}
+                                            </p>
+                                        )}
+                                        <div className="flex gap-3">
+                                            <Button
+                                                variant="outline"
+                                                className="border-stone-200 text-stone-600 hover:bg-stone-50"
+                                                onClick={() => { setIsConfirmingDelete(false); setDeleteError(null); }}
+                                                disabled={isDeleting}
+                                            >
+                                                {t('account.deleteAccountCancel')}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="border-red-400 bg-red-600 text-white hover:bg-red-700 transition-colors"
+                                                onClick={handleDeleteAccount}
+                                                disabled={isDeleting}
+                                            >
+                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                {isDeleting ? t('account.deleteAccountDeleting') : t('account.deleteAccountConfirmBtn')}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

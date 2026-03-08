@@ -54,7 +54,7 @@ export default function PrivacyPage() {
         </h1>
 
         <p className="text-[15px] mb-12" style={{ color: '#8A847A' }}>
-          Última atualização: 23 de fevereiro de 2026
+          Última atualização: 4 de março de 2026
         </p>
 
         <div className="prose prose-lg max-w-none">
@@ -108,288 +108,176 @@ export default function PrivacyPage() {
           <div className="prose">
             <h2>1. Introdução</h2>
             <p>
-              A Resuna Web ("nós", "nosso" ou "Plataforma") está comprometida em proteger sua privacidade. Esta Política de Privacidade explica como coletamos, usamos, armazenamos e compartilhamos suas informações pessoais quando você usa nossa plataforma.
+              A Resuna é um projeto <strong>gratuito e open source</strong> de criação e otimização de currículos. Esta Política descreve de forma transparente quais dados coletamos, como os usamos e quais são seus direitos.
             </p>
             <p>
-              Esta política está em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018) e outras legislações aplicáveis de proteção de dados.
+              Esta política está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
+            </p>
+
+            <h2>2. Princípio: Local-First</h2>
+            <p>
+              O conteúdo dos seus currículos e cartas de apresentação <strong>não é enviado nem armazenado em nossos servidores</strong>. Esses dados ficam exclusivamente no <strong>localStorage do seu navegador</strong>, no seu dispositivo.
             </p>
             <p>
-              <strong>A Resuna Web é um projeto gratuito e open source.</strong> Não cobramos pelos nossos serviços e o código-fonte está disponível publicamente.
+              Isso significa que nenhum colaborador do projeto, operador de servidor ou terceiro tem acesso ao conteúdo dos seus currículos — a menos que você o envie explicitamente para os recursos de IA.
             </p>
 
-            <h2>2. Informações que Coletamos</h2>
+            <h2>3. O Que Coletamos</h2>
 
-            <h3>2.1 Informações Fornecidas por Você</h3>
+            <h3>3.1 Dados de Autenticação</h3>
             <p>
-              Coletamos as seguintes informações quando você cria uma conta e usa nossos serviços:
+              O cadastro e login são feitos <strong>exclusivamente via Google OAuth</strong> (Firebase Authentication). Não existe autenticação por e-mail e senha. Ao fazer login, recebemos do Google:
             </p>
             <ul>
-              <li><strong>Dados de Cadastro:</strong> Nome, e-mail, senha (criptografada)</li>
-              <li><strong>Dados Profissionais:</strong> Informações do currículo incluindo experiências profissionais, educação, habilidades, certificações, idiomas</li>
-              <li><strong>Dados de Perfil:</strong> Foto (opcional), telefone, localização, links de LinkedIn e portfólio</li>
-              <li><strong>Conteúdo Criado:</strong> Currículos, descrições de vagas, cartas de apresentação</li>
-              <li><strong>Comunicações:</strong> Mensagens enviadas para nosso suporte</li>
-            </ul>
-
-            <h3>2.2 Informações Coletadas Automaticamente</h3>
-            <ul>
-              <li><strong>Dados de Uso:</strong> Páginas visitadas, recursos utilizados, tempo de sessão</li>
-              <li><strong>Dados Técnicos:</strong> Endereço IP, tipo de navegador, sistema operacional, identificador de dispositivo</li>
-              <li><strong>Cookies e Tecnologias Similares:</strong> Usamos cookies para melhorar sua experiência (veja seção 8)</li>
-              <li><strong>Logs de Acesso:</strong> Data, hora e atividades realizadas na plataforma</li>
-            </ul>
-
-
-            <h2>3. Como Usamos Suas Informações</h2>
-
-            <h3>3.1 Finalidades do Tratamento</h3>
-            <p>
-              Usamos suas informações pessoais para:
-            </p>
-            <ul>
-              <li><strong>Prestação do Serviço:</strong> Criar, armazenar e gerenciar seus currículos</li>
-              <li><strong>Análise ATS:</strong> Processar análises de compatibilidade com vagas</li>
-              <li><strong>Recursos de IA:</strong> Fornecer refinamento, tradução e geração de cartas usando IA</li>
-              <li><strong>Autenticação:</strong> Verificar sua identidade e gerenciar seu acesso</li>
-              <li><strong>Comunicação:</strong> Enviar notificações sobre sua conta, atualizações e novidades</li>
-              <li><strong>Suporte:</strong> Responder suas dúvidas e solucionar problemas</li>
-              <li><strong>Melhoria do Serviço:</strong> Analisar uso para melhorar funcionalidades</li>
-              <li><strong>Segurança:</strong> Detectar e prevenir fraudes e abusos</li>
-              <li><strong>Conformidade Legal:</strong> Cumprir obrigações legais e regulatórias</li>
-            </ul>
-
-            <h3>3.2 Base Legal (LGPD)</h3>
-            <p>
-              Processamos seus dados pessoais com base em:
-            </p>
-            <ul>
-              <li><strong>Execução de Contrato:</strong> Para fornecer os serviços que você contratou</li>
-              <li><strong>Consentimento:</strong> Para recursos opcionais que requerem sua autorização</li>
-              <li><strong>Legítimo Interesse:</strong> Para melhorar nossos serviços e prevenir fraudes</li>
-              <li><strong>Obrigação Legal:</strong> Para cumprir exigências legais e regulatórias</li>
-            </ul>
-
-            <h2>4. Compartilhamento de Informações</h2>
-
-            <h3>4.1 Com Quem Compartilhamos</h3>
-            <p>
-              Podemos compartilhar suas informações com:
-            </p>
-            <ul>
-              <li><strong>Provedores de Serviço:</strong>
-                <ul>
-                  <li><strong>Firebase/Google Cloud:</strong> Hospedagem, autenticação e armazenamento</li>
-                  <li><strong>Vercel:</strong> Hospedagem da aplicação web</li>
-                  <li><strong>Google Gemini API:</strong> Serviços de IA</li>
-                </ul>
-              </li>
-              <li><strong>Autoridades Legais:</strong> Quando exigido por lei ou para proteger direitos</li>
-              <li><strong>Compartilhamento Público:</strong> Quando você gera links públicos para compartilhar seu currículo</li>
-            </ul>
-
-            <h3>4.2 O Que NÃO Fazemos</h3>
-            <ul>
-              <li>❌ Não vendemos seus dados pessoais para terceiros</li>
-              <li>❌ Não compartilhamos seus currículos sem sua autorização</li>
-              <li>❌ Não usamos seus dados para publicidade direcionada de terceiros</li>
-            </ul>
-
-            <h2>5. Armazenamento e Segurança</h2>
-
-            <h3>5.1 Onde Armazenamos</h3>
-            <ul>
-              <li>Seus dados são armazenados em servidores do <strong>Google Cloud</strong></li>
-              <li>Os servidores estão localizados no Brasil e/ou em regiões geograficamente próximas</li>
-              <li>Utilizamos o <strong>Firestore</strong> (banco de dados NoSQL) e <strong>Cloud Storage</strong></li>
-            </ul>
-
-            <h3>5.2 Medidas de Segurança</h3>
-            <p>
-              Implementamos medidas técnicas e organizacionais para proteger seus dados:
-            </p>
-            <ul>
-              <li><strong>Criptografia:</strong> Conexões HTTPS (TLS/SSL) e senhas criptografadas</li>
-              <li><strong>Autenticação:</strong> Firebase Authentication com múltiplos fatores</li>
-              <li><strong>Controle de Acesso:</strong> Firestore Security Rules restringem acesso aos dados</li>
-              <li><strong>Monitoramento:</strong> Logs e alertas para atividades suspeitas</li>
-              <li><strong>Cookies Seguros:</strong> Cookies httpOnly e secure</li>
-              <li><strong>Backups:</strong> Backups regulares para prevenir perda de dados</li>
-            </ul>
-
-            <h3>5.3 Retenção de Dados</h3>
-            <ul>
-              <li><strong>Conta Ativa:</strong> Mantemos seus dados enquanto sua conta estiver ativa</li>
-              <li><strong>Após Exclusão:</strong> Dados são permanentemente excluídos em até 90 dias</li>
-              <li><strong>Obrigações Legais:</strong> Alguns dados podem ser retidos por períodos exigidos por lei</li>
-              <li><strong>Logs de Sistema:</strong> Logs anonimizados podem ser mantidos para segurança e auditoria</li>
-            </ul>
-
-            <h2>6. Seus Direitos (LGPD)</h2>
-
-            <h3>6.1 Direitos do Titular dos Dados</h3>
-            <p>
-              Conforme a LGPD, você tem os seguintes direitos:
-            </p>
-            <ul>
-              <li><strong>Acesso:</strong> Confirmar se tratamos seus dados e acessá-los</li>
-              <li><strong>Correção:</strong> Corrigir dados incompletos, inexatos ou desatualizados</li>
-              <li><strong>Exclusão:</strong> Solicitar a eliminação de dados tratados com seu consentimento</li>
-              <li><strong>Portabilidade:</strong> Exportar seus dados em formato estruturado (JSON)</li>
-              <li><strong>Revogação de Consentimento:</strong> Retirar consentimento para tratamentos específicos</li>
-              <li><strong>Oposição:</strong> Opor-se ao tratamento de dados em certas situações</li>
-              <li><strong>Informação:</strong> Saber com quem compartilhamos seus dados</li>
-              <li><strong>Anonimização/Bloqueio:</strong> Solicitar anonimização ou bloqueio de dados</li>
-            </ul>
-
-            <h3>6.2 Como Exercer Seus Direitos</h3>
-            <p>
-              Você pode exercer seus direitos através de:
-            </p>
-            <ul>
-              <li><strong>Configurações da Conta:</strong> Editar, exportar ou excluir dados diretamente</li>
-              <li><strong>E-mail:</strong> Entre em contato conosco em privacidade@resuna.app</li>
-              <li><strong>Prazo de Resposta:</strong> Responderemos solicitações em até 15 dias</li>
-            </ul>
-
-            <h3>6.3 Encarregado de Dados (DPO)</h3>
-            <p>
-              Nosso Encarregado de Proteção de Dados (DPO) pode ser contatado em:
-            </p>
-            <ul>
-              <li><strong>E-mail:</strong> dpo@resuna.app</li>
-              <li><strong>Responsável:</strong> [Nome do DPO]</li>
-            </ul>
-
-            <h2>7. Transferência Internacional de Dados</h2>
-            <p>
-              Alguns de nossos provedores de serviço podem estar localizados fora do Brasil:
-            </p>
-            <ul>
-              <li><strong>Google Cloud/Firebase:</strong> Pode processar dados em servidores internacionais</li>
-              <li><strong>Garantias:</strong> Utilizamos cláusulas contratuais padrão e outros mecanismos de conformidade</li>
-              <li><strong>Proteção:</strong> Garantimos que o nível de proteção de dados seja equivalente ao da LGPD</li>
-            </ul>
-
-            <h2>8. Cookies e Tecnologias de Rastreamento</h2>
-
-            <h3>8.1 O Que São Cookies</h3>
-            <p>
-              Cookies são pequenos arquivos de texto armazenados no seu navegador para melhorar sua experiência.
-            </p>
-
-            <h3>8.2 Tipos de Cookies que Usamos</h3>
-            <ul>
-              <li><strong>Cookies Essenciais:</strong> Necessários para o funcionamento do site (autenticação, sessão)</li>
-              <li><strong>Cookies de Desempenho:</strong> Ajudam a entender como você usa o site</li>
-              <li><strong>Cookies Funcionais:</strong> Lembram suas preferências (idioma, tema)</li>
-            </ul>
-
-            <h3>8.3 Gerenciamento de Cookies</h3>
-            <ul>
-              <li>Você pode aceitar ou recusar cookies através do banner de consentimento</li>
-              <li>Você pode desabilitar cookies nas configurações do seu navegador</li>
-              <li>Note que desabilitar cookies pode afetar funcionalidades do site</li>
-            </ul>
-
-            <h2>9. Links para Sites de Terceiros</h2>
-            <p>
-              Nossa plataforma pode conter links para sites de terceiros (LinkedIn, portfólios, etc.). Não somos responsáveis pelas práticas de privacidade desses sites. Recomendamos que você leia as políticas de privacidade de cada site que visitar.
-            </p>
-
-            <h2>10. Menores de Idade</h2>
-            <p>
-              Nosso serviço não se destina a menores de 18 anos. Não coletamos intencionalmente dados de menores. Se você é pai ou responsável e descobrir que seu filho nos forneceu dados, entre em contato conosco para que possamos excluir essas informações.
-            </p>
-
-            <h2>11. Recursos de IA e Conteúdo Gerado</h2>
-
-            <h3>11.1 Uso de IA</h3>
-            <p>
-              Utilizamos a <strong>API Gemini do Google</strong> para:
-            </p>
-            <ul>
-              <li>Refinar e otimizar currículos</li>
-              <li>Gerar cartas de apresentação</li>
-              <li>Traduzir currículos para outros idiomas</li>
-            </ul>
-
-            <h3>11.2 Processamento de Dados</h3>
-            <ul>
-              <li>Enviamos apenas o conteúdo necessário (currículo, descrição da vaga) para a API Gemini</li>
-              <li>Google processa dados conforme suas próprias políticas de privacidade</li>
-              <li>Conteúdo gerado por IA é de sua propriedade e responsabilidade</li>
-              <li>Recomendamos sempre revisar e validar conteúdo gerado por IA</li>
-            </ul>
-
-            <h2>12. Compartilhamento Público de Currículos</h2>
-            <p>
-              Quando você gera um link público para compartilhar seu currículo:
-            </p>
-            <ul>
-              <li>O currículo se torna acessível a qualquer pessoa com o link</li>
-              <li>Links expiram automaticamente após 7 dias (padrão)</li>
-              <li>Você pode revogar links a qualquer momento</li>
-              <li>Rastreamos número de visualizações para sua informação</li>
-              <li>Você é responsável por controlar quem tem acesso ao link</li>
-            </ul>
-
-            <h2>13. Alterações nesta Política</h2>
-            <p>
-              Podemos atualizar esta Política de Privacidade periodicamente. Quando fizermos alterações significativas, notificaremos você através de:
-            </p>
-            <ul>
-              <li>E-mail para o endereço cadastrado</li>
-              <li>Notificação destacada em nossa plataforma</li>
-              <li>Aviso na página inicial do site</li>
+              <li>Nome de exibição</li>
+              <li>Endereço de e-mail</li>
+              <li>URL da foto de perfil (opcional)</li>
+              <li>Identificador único (UID) do Google</li>
             </ul>
             <p>
-              A data da "Última atualização" no topo desta página indica quando a política foi revisada pela última vez.
+              Essas informações são gerenciadas pelo Firebase Authentication e não são armazenadas de forma redundante por nós.
             </p>
 
-            <h2>14. Conformidade e Reclamações</h2>
-
-            <h3>14.1 Autoridade Nacional de Proteção de Dados (ANPD)</h3>
+            <h3>3.2 Dados de Uso e Telemetria</h3>
             <p>
-              Você tem o direito de apresentar reclamações sobre o tratamento de seus dados à ANPD:
+              Para fins de segurança, prevenção de abuso e entendimento agregado do uso do serviço, registramos no servidor:
             </p>
             <ul>
-              <li><strong>Website:</strong> <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">www.gov.br/anpd</a></li>
-              <li><strong>E-mail:</strong> contato@anpd.gov.br</li>
+              <li><strong>Tipo de ação:</strong> ex. <em>CREATE_RESUME</em>, <em>ATS_ANALYSIS</em>, <em>EXPORT_PDF</em> — sem o conteúdo associado</li>
+              <li><strong>IP hasheado:</strong> o endereço IP é convertido em hash SHA-256 (truncado a 16 caracteres) antes de ser armazenado — o IP real nunca é salvo</li>
+              <li><strong>User-agent anonimizado:</strong> registramos apenas a categoria (ex. "Chrome/Windows"), sem detalhes identificáveis do dispositivo</li>
+              <li><strong>Timestamp:</strong> data e hora da ação</li>
             </ul>
-
-            <h3>14.2 Nosso Compromisso</h3>
             <p>
-              Estamos comprometidos em resolver quaisquer preocupações sobre privacidade. Entre em contato conosco primeiro para que possamos abordar suas questões diretamente.
+              <strong>Não registramos:</strong> conteúdo de currículos, descrições de vagas, resultados de IA, e-mail do usuário nos logs de atividade, nem o IP completo.
             </p>
 
-            <h2>15. Contato</h2>
+            <h3>3.3 Resultados de Análise ATS</h3>
             <p>
-              Para questões sobre esta Política de Privacidade ou sobre o tratamento de seus dados pessoais, entre em contato:
+              Quando você usa a análise de compatibilidade ATS, o conteúdo do currículo é enviado ao nosso servidor Python (FastAPI) para processamento local. Os <strong>resultados</strong> (pontuação, palavras-chave, recomendações) são armazenados no Firestore associados ao seu UID para que você possa consultá-los posteriormente.
             </p>
+
+            <h3>3.4 Dados Não Coletados</h3>
             <ul>
-              <li><strong>E-mail Geral:</strong> privacidade@resuna.app</li>
-              <li><strong>Encarregado (DPO):</strong> dpo@resuna.app</li>
-              <li><strong>Suporte:</strong> suporte@resuna.app</li>
-              <li><strong>Endereço:</strong> [Seu endereço comercial completo]</li>
+              <li>❌ Conteúdo dos seus currículos (armazenado apenas no seu navegador)</li>
+              <li>❌ Histórico de navegação ou comportamento fora do app</li>
+              <li>❌ Cookies de rastreamento ou publicidade</li>
+              <li>❌ Dados financeiros ou de pagamento (não há cobrança)</li>
+              <li>❌ Endereço IP completo (apenas hash truncado)</li>
             </ul>
 
-            <h2>16. Glossário</h2>
+            <h2>4. Como Usamos Suas Informações</h2>
             <ul>
-              <li><strong>Titular:</strong> Pessoa natural a quem se referem os dados pessoais</li>
-              <li><strong>Tratamento:</strong> Toda operação realizada com dados pessoais</li>
-              <li><strong>Controlador:</strong> A Resuna Web, que toma decisões sobre o tratamento</li>
-              <li><strong>Operador:</strong> Quem realiza o tratamento em nome do controlador</li>
-              <li><strong>Encarregado (DPO):</strong> Pessoa indicada para atuar como canal de comunicação</li>
-              <li><strong>LGPD:</strong> Lei Geral de Proteção de Dados (Lei nº 13.709/2018)</li>
-              <li><strong>ANPD:</strong> Autoridade Nacional de Proteção de Dados</li>
+              <li><strong>Autenticação:</strong> identificar você e controlar o acesso à conta</li>
+              <li><strong>Análise ATS:</strong> processar e armazenar os resultados das suas análises</li>
+              <li><strong>Limites de uso:</strong> aplicar rate limiting e CAPTCHA para prevenir abuso</li>
+              <li><strong>Segurança:</strong> detectar padrões anômalos usando os logs anonimizados</li>
+              <li><strong>Melhorias:</strong> entender em nível agregado quais funcionalidades são mais usadas</li>
             </ul>
+
+            <h2>5. Recursos de IA e Serviços de Terceiros</h2>
+
+            <h3>5.1 OpenRouter API</h3>
+            <p>
+              Os recursos de IA (refinamento de currículo, geração de carta de apresentação, tradução) enviam o conteúdo necessário — texto do currículo e/ou descrição da vaga — para a <strong>API OpenRouter</strong>, que roteia a requisição para modelos de linguagem abertos de múltiplos provedores. O processamento ocorre nos servidores da OpenRouter conforme seus próprios termos e política de privacidade.
+            </p>
+            <p>
+              Não enviamos seu e-mail, nome ou qualquer dado de identificação junto com as requisições de IA.
+            </p>
+
+            <h3>5.2 Firebase / Google Cloud</h3>
+            <p>
+              Utilizamos o Firebase para autenticação e o Firestore para armazenar dados operacionais (resultados ATS, logs de uso anonimizados, perfil de conta). Os dados são processados pela Google conforme a <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Política de Privacidade do Google</a>.
+            </p>
+
+            <h3>5.3 Cloudflare Turnstile</h3>
+            <p>
+              Usamos o Cloudflare Turnstile como CAPTCHA em operações sensíveis (análise ATS, exportação). O Turnstile analisa sinais do navegador sem rastrear o usuário individualmente. Veja a <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">política da Cloudflare</a>.
+            </p>
+
+            <h2>6. O Que NÃO Fazemos</h2>
+            <ul>
+              <li>❌ Não vendemos seus dados pessoais</li>
+              <li>❌ Não compartilhamos dados com anunciantes</li>
+              <li>❌ Não usamos seus dados para treinar modelos de IA</li>
+              <li>❌ Não enviamos e-mails de marketing ou newsletters</li>
+              <li>❌ Não acessamos o conteúdo dos seus currículos (ficam no seu navegador)</li>
+            </ul>
+
+            <h2>7. Armazenamento e Segurança</h2>
+
+            <h3>7.1 Dados no Servidor</h3>
+            <ul>
+              <li>Armazenados no <strong>Google Cloud Firestore</strong> (Brasil e/ou regiões próximas)</li>
+              <li>Acesso controlado por Firebase Security Rules — cada usuário acessa apenas seus próprios dados</li>
+              <li>Comunicação exclusivamente via HTTPS (TLS)</li>
+            </ul>
+
+            <h3>7.2 Dados no Seu Dispositivo</h3>
+            <ul>
+              <li>Currículos e cartas ficam no <strong>localStorage</strong> do seu navegador</li>
+              <li>Você tem controle total: pode exportar (JSON) ou excluir a qualquer momento pelo app</li>
+              <li>Limpar os dados do navegador apaga seus currículos permanentemente</li>
+            </ul>
+
+            <h3>7.3 Retenção</h3>
+            <ul>
+              <li><strong>Conta ativa:</strong> dados de autenticação e resultados ATS mantidos enquanto a conta existir</li>
+              <li><strong>Após exclusão da conta:</strong> dados do Firestore removidos em até 90 dias</li>
+              <li><strong>Logs anonimizados:</strong> podem ser mantidos por período superior para fins de segurança e auditoria, pois não contêm dados pessoais identificáveis</li>
+            </ul>
+
+            <h2>8. Armazenamento Local (localStorage)</h2>
+            <p>
+              O app utiliza o localStorage do navegador — não cookies — para armazenar seus currículos e cartas de apresentação. O localStorage não é transmitido ao servidor automaticamente e não é acessível por outros sites.
+            </p>
+            <p>
+              Você pode exportar seus dados a qualquer momento em formato JSON pelo aplicativo.
+            </p>
+
+            <h2>9. Seus Direitos (LGPD)</h2>
+
+            <h3>9.1 Direitos do Titular</h3>
+            <ul>
+              <li><strong>Acesso:</strong> consultar dados que mantemos sobre você</li>
+              <li><strong>Correção:</strong> corrigir dados incompletos ou inexatos</li>
+              <li><strong>Exclusão:</strong> excluir sua conta e dados associados via <Link href="/account">Minha Conta</Link></li>
+              <li><strong>Portabilidade:</strong> exportar seus currículos em JSON a qualquer momento</li>
+              <li><strong>Oposição:</strong> opor-se a tratamentos específicos</li>
+              <li><strong>Reclamação à ANPD:</strong> <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">www.gov.br/anpd</a></li>
+            </ul>
+
+            <h3>9.2 Como Exercer</h3>
+            <p>
+              A maioria dos direitos pode ser exercida diretamente pelo app (exportar, excluir conta). Para solicitações adicionais, abra uma issue no repositório GitHub do projeto.
+            </p>
+
+            <h2>10. Transferência Internacional de Dados</h2>
+            <p>
+              Ao usar recursos de IA, o conteúdo do currículo pode ser processado fora do Brasil pela OpenRouter e seus provedores de modelos. Ao usar o Firebase, dados podem transitar por servidores Google internacionais. Ambos os provedores adotam mecanismos de proteção equivalentes à LGPD.
+            </p>
+
+            <h2>11. Menores de Idade</h2>
+            <p>
+              O Serviço não se destina a menores de 18 anos. Se identificarmos que dados de um menor foram coletados inadvertidamente, os excluiremos imediatamente.
+            </p>
+
+            <h2>12. Alterações nesta Política</h2>
+            <p>
+              Atualizações serão publicadas nesta página e comunicadas via repositório GitHub. A data no topo indica a última revisão.
+            </p>
+
+            <h2>13. Contato</h2>
+            <p>
+              Por ser um projeto open source, dúvidas e solicitações relacionadas à privacidade devem ser feitas via <strong>GitHub Issues</strong> no repositório do projeto.
+            </p>
 
             <div className="mt-16 p-6 rounded-sm" style={{ backgroundColor: '#EEEAE4' }}>
               <p style={{ color: '#2A2824', fontWeight: 500, marginBottom: '0.75rem' }}>
                 Transparência e Controle
               </p>
               <p style={{ color: '#5C5850', marginBottom: 0 }}>
-                Você tem controle total sobre seus dados. Pode visualizar, editar, exportar ou excluir suas informações a qualquer momento através das configurações da sua conta. Estamos comprometidos em proteger sua privacidade e cumprir integralmente com a LGPD.
+                O design local-first da Resuna foi uma escolha deliberada de privacidade: seu currículo é seu, fica no seu dispositivo e não passa pelos nossos servidores. Você pode exportar, excluir e migrar seus dados a qualquer momento, sem depender de nós.
               </p>
             </div>
           </div>

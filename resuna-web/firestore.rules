@@ -16,61 +16,37 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.admin == true;
     }
 
-    function isValidEmail() {
-      return isAuthenticated() && request.auth.token.email_verified == true;
-    }
-
+    // hasValidUserId: garante que o campo userId no documento bate com o UID do usuário autenticado.
     function hasValidUserId() {
       return request.resource.data.userId == request.auth.uid;
     }
 
+    // userIdNotChanged: impede que atualizações alterem o dono do documento.
+    // Fix: removida a primeira condição `!('userId' in ...)` que era dead-code em updates e
+    // permitia que um set() sem o campo userId passasse a validação.
     function userIdNotChanged() {
-      return !('userId' in request.resource.data) ||
-             request.resource.data.userId == resource.data.userId;
+      return request.resource.data.userId == resource.data.userId;
     }
 
     // ===== RESUMES =====
+    // Arquitetura local-first: currículos vivem no localStorage do navegador, NÃO no Firestore.
+    // O backend usa Admin SDK (ignora estas regras). Nenhum cliente deve ler/escrever aqui diretamente.
 
     match /resumes/{resumeId} {
-      allow read:   if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && isValidEmail() && hasValidUserId() &&
-                       request.resource.data.keys().hasAll(['userId', 'title', 'createdAt']) &&
-                       request.resource.data.title is string &&
-                       request.resource.data.title.size() <= 200;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
-                       userIdNotChanged();
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read, write: if false;
     }
 
     // ===== COVER LETTERS =====
-
-    function isValidCoverLetter() {
-      let d = request.resource.data;
-      return d.keys().hasAll(['userId', 'resumeId', 'jobTitle', 'company', 'content', 'tone']) &&
-             d.userId is string && d.userId.size() <= 128 &&
-             d.resumeId is string && d.resumeId.size() <= 128 &&
-             d.jobTitle is string && d.jobTitle.size() <= 200 &&
-             d.company is string && d.company.size() <= 200 &&
-             d.content is string && d.content.size() <= 20000 &&
-             d.tone in ['professional', 'enthusiastic', 'formal'];
-    }
+    // Mesma decisão arquitetural: cartas de apresentação ficam no localStorage.
+    // Escrita e leitura client-side bloqueadas; Admin SDK do backend não é afetado.
 
     match /coverLetters/{letterId} {
-      allow read:   if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && isValidEmail() && hasValidUserId() &&
-                       isValidCoverLetter();
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
-                       userIdNotChanged() && isValidCoverLetter();
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read, write: if false;
     }
 
-    // ===== ATS ANALYSES (root-level) =====
-    // Escrita apenas pelo backend (Admin SDK). Leitura somente pelo dono.
-
-    match /ats_analyses/{analysisId} {
-      allow read:  if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow write: if false;
-    }
+    // ===== ATS ANALYSES =====
+    // ATENÇÃO: os dados ficam na SUBcoleção users/{userId}/ats_analyses/ (ver bloco USERS abaixo).
+    // A regra raiz /ats_analyses foi removida por ser letra morta (nenhum dado é escrito aqui).
 
     // ===== USERS =====
 
@@ -87,7 +63,9 @@ service cloud.firestore {
     }
 
     // ===== USER SUBSCRIPTIONS =====
-    // Escrita apenas pelo backend.
+    // Escrita apenas pelo backend (Admin SDK).
+    // Nota: user_subscriptions e subscriptions são duas coleções com a mesma regra.
+    // Verifique qual o backend realmente usa e remova a redundante futuramente.
 
     match /user_subscriptions/{userId} {
       allow read:  if isOwner(userId) || isAdmin();
@@ -141,10 +119,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ===== AUDIT LOGS =====
+    // ===== AUDIT LOGS (admin only) =====
+    // Fix: removido o acesso self-read. Logs de auditoria são sensíveis — permitir que o
+    // próprio usuário leia seus logs revelaria quais ações estão sendo monitoradas,
+    // facilitando evasão de detecção. Consistente com user_activities e usage_aggregates.
 
     match /audit_logs/{logId} {
-      allow read:  if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read:  if isAdmin();
       allow write: if false;
     }
 

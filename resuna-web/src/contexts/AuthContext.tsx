@@ -8,10 +8,12 @@ import {
     onAuthStateChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
+import { setStorageUser } from '@/lib/storage';
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
+    isAdmin: boolean;
     signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
     getIdToken: () => Promise<string | null>;
@@ -22,10 +24,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            // Namespace localStorage by userId so different accounts never share data
+            setStorageUser(firebaseUser?.uid ?? null);
             setUser(firebaseUser);
+            if (firebaseUser) {
+                try {
+                    const tokenResult = await firebaseUser.getIdTokenResult(true);
+                    setIsAdmin(!!tokenResult.claims.admin);
+                } catch {
+                    setIsAdmin(false);
+                }
+            } else {
+                setIsAdmin(false);
+            }
             setLoading(false);
         });
 
@@ -33,15 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const signInWithGoogle = async () => {
-        const result = await signInWithPopup(auth, googleProvider);
-        console.log('[Auth] signInWithPopup success:', result.user?.email);
+        await signInWithPopup(auth, googleProvider);
     };
 
     const signOut = async () => {
         try {
             await firebaseSignOut(auth);
         } catch (error) {
-            console.error('Error signing out:', error);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error('Error signing out:', error);
+            }
             throw error;
         }
     };
@@ -51,13 +67,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             return await user.getIdToken();
         } catch (error) {
-            console.error('Error getting ID token:', error);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error('Error getting ID token:', error);
+            }
             return null;
         }
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, getIdToken }}>
+        <AuthContext.Provider value={{ user, loading, isAdmin, signInWithGoogle, signOut, getIdToken }}>
             {children}
         </AuthContext.Provider>
     );

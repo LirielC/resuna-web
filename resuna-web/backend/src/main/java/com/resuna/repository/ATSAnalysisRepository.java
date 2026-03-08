@@ -39,4 +39,9 @@ public interface ATSAnalysisRepository {
      * Delete an analysis.
      */
     void delete(String id, String userId);
+
+    /**
+     * Delete all analyses for a user (used during account deletion).
+     */
+    void deleteAllByUserId(String userId) throws Exception;
 }

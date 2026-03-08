@@ -90,7 +90,7 @@ public class ResumeController {
         // Log activity (DO NOT log resume title - may contain PII)
         analyticsService.logActivity(userId, null, "CREATE_RESUME",
                 String.format("{\"resumeId\":\"%s\"}", createdResume.getId()),
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(createdResume);
     }
@@ -116,7 +116,7 @@ public class ResumeController {
 
         analyticsService.logActivity(userId, null, "UPDATE_RESUME",
                 String.format("{\"resumeId\":\"%s\"}", id),
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         return ResponseEntity.ok(updatedResume);
     }
@@ -131,7 +131,7 @@ public class ResumeController {
 
         analyticsService.logActivity(userId, null, "DELETE_RESUME",
                 String.format("{\"resumeId\":\"%s\"}", id),
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         return ResponseEntity.noContent().build();
     }
@@ -153,7 +153,7 @@ public class ResumeController {
 
         analyticsService.logActivity(userId, null, "EXPORT_PDF",
                 "{\"resumeId\":\"" + id + "\"}",
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -166,14 +166,18 @@ public class ResumeController {
     @GetMapping("/{id}/docx")
     public ResponseEntity<byte[]> exportToDocx(
             @PathVariable String id,
+            @RequestParam(value = "locale", defaultValue = "pt-BR") String locale,
             HttpServletRequest request) throws Exception {
+        if (!ALLOWED_LOCALES.contains(locale)) {
+            return ResponseEntity.badRequest().body(null);
+        }
         String userId = getCurrentUserId(request);
         Resume resume = resumeService.getResumeById(id, userId);
-        byte[] docxBytes = exportService.exportToDocx(resume);
+        byte[] docxBytes = exportService.exportToDocx(resume, locale);
 
         analyticsService.logActivity(userId, null, "EXPORT_DOCX",
                 "{\"resumeId\":\"" + id + "\"}",
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(
@@ -197,13 +201,18 @@ public class ResumeController {
         if (!ALLOWED_LOCALES.contains(locale)) {
             return ResponseEntity.badRequest().body(null);
         }
+        // If no explicit locale given (defaulted to pt-BR), check the resume's own language field
+        String effectiveLocale = locale;
+        if ("pt-BR".equals(locale) && resume.getLanguage() != null && !resume.getLanguage().isEmpty()) {
+            effectiveLocale = resume.getLanguage();
+        }
         String userId = getCurrentUserId(request);
-        logger.info("Exporting PDF from body with locale: {} for user: {}", locale, userId);
-        byte[] pdfBytes = exportService.exportToPdf(resume, locale);
+        logger.info("Exporting PDF from body with locale: {} for user: {}", effectiveLocale, userId);
+        byte[] pdfBytes = exportService.exportToPdf(resume, effectiveLocale);
 
         logActivitySafely(userId, "EXPORT_PDF",
                 "{\"source\":\"body\"}",
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -221,13 +230,17 @@ public class ResumeController {
     @PostMapping("/export/docx")
     public ResponseEntity<byte[]> exportBodyToDocx(
             @RequestBody Resume resume,
+            @RequestParam(value = "locale", defaultValue = "pt-BR") String locale,
             HttpServletRequest request) throws Exception {
+        if (!ALLOWED_LOCALES.contains(locale)) {
+            return ResponseEntity.badRequest().body(null);
+        }
         String userId = getCurrentUserId(request);
-        byte[] docxBytes = exportService.exportToDocx(resume);
+        byte[] docxBytes = exportService.exportToDocx(resume, locale);
 
         logActivitySafely(userId, "EXPORT_DOCX",
                 "{\"source\":\"body\"}",
-                request.getRemoteAddr(), request.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(
@@ -250,7 +263,8 @@ public class ResumeController {
         String userId = getCurrentUserId(request);
         String userEmail = getUserEmail(request);
 
-        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request);
+        // CAPTCHA not required here — user is authenticated via Firebase and credits are consumed below.
+        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request, false);
         if (guard != null) return guard;
 
         try {
@@ -268,7 +282,7 @@ public class ResumeController {
 
             logActivitySafely(userId, "TRANSLATE_RESUME",
                     "{\"source\":\"body\",\"targetLanguage\":\"en\"}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
             UserSubscription subscription = subscriptionService.getUserSubscription(
                     userId, userEmail,
@@ -310,8 +324,17 @@ public class ResumeController {
         String userId = getCurrentUserId(request);
         String userEmail = getUserEmail(request);
 
-        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request);
-        if (guard != null) return guard;
+        // Guard: feature flags + credits only (no CAPTCHA — import is data extraction, not AI generation)
+        if (!featureFlagsService.getFlags(userId).isAiEnabled()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Feature disabled for your account"));
+        }
+        String ipAddress = securityUtils.getSecureClientIp(request);
+        String fingerprint = securityUtils.getClientFingerprint(request);
+        if (!subscriptionService.canUseAIFeatures(userId, userEmail, ipAddress, fingerprint)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Insufficient credits. Please purchase more to continue."));
+        }
 
         // Validate file
         if (file == null || file.isEmpty()) {
@@ -337,7 +360,7 @@ public class ResumeController {
             logger.error("Security validation failed for user {}: {}", userId, e.getMessage());
             logActivitySafely(userId, "SECURITY_ALERT",
                     "{\"type\":\"pdf_import_validation_failed\",\"reason\":\"" + e.getMessage() + "\"}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "PDF inválido ou não seguro"));
         } catch (IOException e) {
@@ -358,7 +381,7 @@ public class ResumeController {
 
             logActivitySafely(userId, "IMPORT_PDF_RESUME",
                     "{\"success\":true}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
             UserSubscription subscription = subscriptionService.getUserSubscription(
                     userId, userEmail,
@@ -371,7 +394,7 @@ public class ResumeController {
         } catch (IOException e) {
             logActivitySafely(userId, "IMPORT_PDF_RESUME_FAILED",
                     "{\"error\":\"io_exception\"}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Falha ao processar PDF"));
         }
@@ -416,7 +439,7 @@ public class ResumeController {
 
             logActivitySafely(userId, "TRANSLATE_RESUME",
                     "{\"originalResumeId\":\"" + id + "\",\"translatedResumeId\":\"" + savedTranslatedResume.getId() + "\",\"targetLanguage\":\"en\"}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
             UserSubscription subscription = subscriptionService.getUserSubscription(
                     userId, userEmail,
@@ -430,7 +453,7 @@ public class ResumeController {
             logger.warn("Translation temporarily failed for resume {}: {}", id, e.getMessage());
             logActivitySafely(userId, "TRANSLATE_RESUME_FAILED",
                     "{\"resumeId\":\"" + id + "\",\"error\":\"" + e.getMessage() + "\"}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
                     "errorCode", "TRANSLATION_TEMPORARY_FAILURE",
@@ -440,7 +463,7 @@ public class ResumeController {
             logger.error("Failed to translate resume {}: {}", id, e.getMessage());
             logActivitySafely(userId, "TRANSLATE_RESUME_FAILED",
                     "{\"resumeId\":\"" + id + "\",\"error\":\"unexpected_error\"}",
-                    request.getRemoteAddr(), request.getHeader("User-Agent"));
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
                             "errorCode", "TRANSLATION_UNEXPECTED_FAILURE",
@@ -455,6 +478,11 @@ public class ResumeController {
      * Captcha token is read from the X-Captcha-Token header.
      */
     private ResponseEntity<?> checkAiGuards(String userId, String userEmail, HttpServletRequest request) {
+        return checkAiGuards(userId, userEmail, request, true);
+    }
+
+    /** Same as checkAiGuards but optionally skips CAPTCHA verification. */
+    private ResponseEntity<?> checkAiGuards(String userId, String userEmail, HttpServletRequest request, boolean requireCaptcha) {
         if (!featureFlagsService.getFlags(userId).isAiEnabled()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Feature disabled for your account"));
@@ -468,13 +496,13 @@ public class ResumeController {
                     .body(Map.of("error", "Insufficient credits. Please purchase more to continue."));
         }
 
-        // CAPTCHA is mandatory. TurnstileService.verify() returns true when disabled (dev mode),
-        // so this check is a no-op when TURNSTILE_ENABLED=false and enforced when enabled=true.
-        String captchaToken = request.getHeader("X-Captcha-Token");
-        if (!turnstileService.verify(captchaToken, ipAddress)) {
-            logger.warn("🚨 [SECURITY] CAPTCHA verification failed for user {} on AI route", userId);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
+        if (requireCaptcha) {
+            String captchaToken = request.getHeader("X-Captcha-Token");
+            if (!turnstileService.verify(captchaToken, ipAddress)) {
+                logger.warn("🚨 [SECURITY] CAPTCHA verification failed for user {} on AI route", userId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
+            }
         }
 
         return null; // all checks passed

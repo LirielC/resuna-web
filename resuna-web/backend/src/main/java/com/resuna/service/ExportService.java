@@ -39,7 +39,8 @@ public class ExportService {
     private static final float MARGIN_BOTTOM = 36;
     private static final float CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
 
-    private static final float LINE_HEIGHT = 13.2f; // ~120% of 11pt body text
+    private static final float LINE_HEIGHT = 13.2f; // ~120% of 11pt body text (headers/titles)
+    private static final float BULLET_LINE_HEIGHT = 11.5f; // tighter spacing for bullet lists
     private static final float SECTION_SPACING = 17; // ~12pt before section header
 
     // ── Mutable state for multi-page rendering ──────────────────────────
@@ -126,11 +127,25 @@ public class ExportService {
                 // ============ CONTACT INFO LINE - CENTERED WITH CLICKABLE LINKS ============
                 if (resume.getPersonalInfo() != null) {
                     Resume.PersonalInfo info = resume.getPersonalInfo();
+
+                    // Location on its own line between name and contacts (never gets pushed off-page)
+                    if (info.getLocation() != null && !info.getLocation().isEmpty()) {
+                        float locFontSize = 11f;
+                        float locWidth = fontItalic.getStringWidth(info.getLocation()) / 1000 * locFontSize;
+                        float locX = (PAGE_WIDTH - locWidth) / 2;
+                        currentContentStream.get().beginText();
+                        currentContentStream.get().setFont(fontItalic, locFontSize);
+                        currentContentStream.get().newLineAtOffset(locX, currentY.get()[0]);
+                        currentContentStream.get().showText(info.getLocation());
+                        currentContentStream.get().endText();
+                        currentY.get()[0] -= 16;
+                    }
+
                     float contactFontSize = 10.5f;
                     String separator = " | ";
                     float separatorWidth = fontRegular.getStringWidth(separator) / 1000 * contactFontSize;
 
-                    // Build contact parts with metadata for links
+                    // Build contact parts with metadata for links (location excluded — rendered above)
                     List<ContactPart> contactParts = new ArrayList<>();
 
                     if (info.getPhone() != null && !info.getPhone().isEmpty()) {
@@ -157,9 +172,6 @@ public class ExportService {
                                 .replace("www.", "");
                         String fullUrl = sanitizeUrl(info.getWebsite());
                         contactParts.add(new ContactPart(displayWebsite, fullUrl));
-                    }
-                    if (info.getLocation() != null && !info.getLocation().isEmpty()) {
-                        contactParts.add(new ContactPart(info.getLocation(), null)); // No link for location
                     }
 
                     if (!contactParts.isEmpty()) {
@@ -281,15 +293,15 @@ public class ExportService {
                         if (exp.getBullets() != null) {
                             for (String bullet : exp.getBullets()) {
                                 if (bullet != null && !bullet.trim().isEmpty()) {
-                                    currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontRegular);
+                                    currentY.get()[0] = ensureSpace(currentY.get()[0], BULLET_LINE_HEIGHT, fontRegular);
                                     String cleanBullet = bullet.trim().replaceFirst("^[•\\-\\*]\\s*", "");
                                     String bulletText = "\u2022 " + cleanBullet;
                                     currentY.get()[0] = drawWrappedText(bulletText, currentY.get()[0], fontRegular, 11,
-                                            CONTENT_WIDTH - 18, MARGIN_LEFT + 18);
+                                            CONTENT_WIDTH, MARGIN_LEFT, BULLET_LINE_HEIGHT);
                                 }
                             }
                         }
-                        currentY.get()[0] -= 6;
+                        currentY.get()[0] -= 4;
                     }
                 }
 
@@ -305,14 +317,35 @@ public class ExportService {
 
                         String name = safeString(proj.getName());
                         String dateRange = formatDateRange(proj.getStartDate(), proj.getEndDate(), false, locale);
+                        String projUrl = sanitizeUrl(proj.getUrl());
 
+                        // Project name — bold, left-aligned
                         currentContentStream.get().beginText();
                         currentContentStream.get().setFont(fontBold, 11);
                         currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
                         currentContentStream.get().showText(name.toUpperCase());
                         currentContentStream.get().endText();
 
-                        if (!dateRange.isEmpty()) {
+                        // URL right-aligned on same line as name (blue, clickable)
+                        if (projUrl != null) {
+                            String displayUrl = proj.getUrl().trim()
+                                    .replaceFirst("(?i)^https?://", "").replaceFirst("^www\\.", "");
+                            float urlFontSize = 10f;
+                            float urlWidth = fontRegular.getStringWidth(displayUrl) / 1000 * urlFontSize;
+                            float urlX = PAGE_WIDTH - MARGIN_RIGHT - urlWidth;
+                            float urlLinkY = currentY.get()[0];
+                            currentContentStream.get().setNonStrokingColor(26f / 255f, 115f / 255f, 232f / 255f);
+                            currentContentStream.get().beginText();
+                            currentContentStream.get().setFont(fontRegular, urlFontSize);
+                            currentContentStream.get().newLineAtOffset(urlX, currentY.get()[0]);
+                            currentContentStream.get().showText(displayUrl);
+                            currentContentStream.get().endText();
+                            currentContentStream.get().setNonStrokingColor(0, 0, 0);
+                            PDPage activePage = currentDocument.get()
+                                    .getPage(currentDocument.get().getNumberOfPages() - 1);
+                            addClickableLink(projUrl, urlX, urlLinkY, urlWidth, urlFontSize + 2, activePage);
+                        } else if (!dateRange.isEmpty()) {
+                            // No URL: show date range right-aligned instead
                             float dateWidth = fontBold.getStringWidth(dateRange) / 1000 * 11;
                             currentContentStream.get().beginText();
                             currentContentStream.get().setFont(fontBold, 11);
@@ -322,29 +355,7 @@ public class ExportService {
                         }
                         currentY.get()[0] -= LINE_HEIGHT;
 
-                        // Project URL
-                        String projUrl = sanitizeUrl(proj.getUrl());
-                        if (projUrl != null) {
-                            currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontRegular);
-                            float urlFontSize = 10f;
-                            String displayUrl = proj.getUrl().trim()
-                                    .replaceFirst("(?i)^https?://", "").replaceFirst("^www\\.", "");
-                            float urlWidth = fontRegular.getStringWidth(displayUrl) / 1000 * urlFontSize;
-                            float urlLinkY = currentY.get()[0];
-                            currentContentStream.get().setNonStrokingColor(26f / 255f, 115f / 255f, 232f / 255f);
-                            currentContentStream.get().beginText();
-                            currentContentStream.get().setFont(fontRegular, urlFontSize);
-                            currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
-                            currentContentStream.get().showText(displayUrl);
-                            currentContentStream.get().endText();
-                            currentContentStream.get().setNonStrokingColor(0, 0, 0);
-                            PDPage activePage = currentDocument.get()
-                                    .getPage(currentDocument.get().getNumberOfPages() - 1);
-                            addClickableLink(projUrl, MARGIN_LEFT, urlLinkY, urlWidth, urlFontSize + 2, activePage);
-                            currentY.get()[0] -= LINE_HEIGHT;
-                        }
-
-                        // Technologies
+                        // Technologies (italic, below title)
                         if (proj.getTechnologies() != null && !proj.getTechnologies().isEmpty()) {
                             currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontItalic);
                             String techStr = String.join(", ", proj.getTechnologies());
@@ -356,18 +367,24 @@ public class ExportService {
                             currentY.get()[0] -= LINE_HEIGHT;
                         }
 
+                        // Description (wrapped, regular text)
+                        if (proj.getDescription() != null && !proj.getDescription().trim().isEmpty()) {
+                            currentY.get()[0] = drawWrappedText(proj.getDescription().trim(),
+                                    currentY.get()[0], fontRegular, 11, CONTENT_WIDTH, MARGIN_LEFT, BULLET_LINE_HEIGHT);
+                        }
+
                         if (proj.getBullets() != null) {
                             for (String bullet : proj.getBullets()) {
                                 if (bullet != null && !bullet.trim().isEmpty()) {
-                                    currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontRegular);
+                                    currentY.get()[0] = ensureSpace(currentY.get()[0], BULLET_LINE_HEIGHT, fontRegular);
                                     String cleanBullet = bullet.trim().replaceFirst("^[•\\-\\*]\\s*", "");
                                     String bulletText = "\u2022 " + cleanBullet;
                                     currentY.get()[0] = drawWrappedText(bulletText, currentY.get()[0], fontRegular, 11,
-                                            CONTENT_WIDTH - 18, MARGIN_LEFT + 18);
+                                            CONTENT_WIDTH, MARGIN_LEFT, BULLET_LINE_HEIGHT);
                                 }
                             }
                         }
-                        currentY.get()[0] -= 6;
+                        currentY.get()[0] -= 4;
                     }
                 }
 
@@ -401,7 +418,11 @@ public class ExportService {
                         currentY.get()[0] -= LINE_HEIGHT;
 
                         String degree = safeString(edu.getDegree());
-                        String gradDate = edu.getGraduationDate() != null ? edu.getGraduationDate() : "";
+                        String gradDate = formatMonthYear(edu.getGraduationDate(), locale);
+                        String eduStart = formatMonthYear(edu.getStartDate(), locale);
+                        String eduDateRange = (!eduStart.isEmpty() && !gradDate.isEmpty())
+                                ? eduStart + " \u2014 " + gradDate
+                                : gradDate;
 
                         currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontItalic);
                         currentContentStream.get().beginText();
@@ -410,45 +431,83 @@ public class ExportService {
                         currentContentStream.get().showText(degree);
                         currentContentStream.get().endText();
 
-                        if (!gradDate.isEmpty()) {
-                            float dateWidth = fontItalic.getStringWidth(gradDate) / 1000 * 11;
+                        if (!eduDateRange.isEmpty()) {
+                            float dateWidth = fontItalic.getStringWidth(eduDateRange) / 1000 * 11;
                             currentContentStream.get().beginText();
                             currentContentStream.get().setFont(fontItalic, 11);
                             currentContentStream.get().newLineAtOffset(PAGE_WIDTH - MARGIN_RIGHT - dateWidth, currentY.get()[0]);
-                            currentContentStream.get().showText(gradDate);
+                            currentContentStream.get().showText(eduDateRange);
                             currentContentStream.get().endText();
                         }
-                        currentY.get()[0] -= LINE_HEIGHT + 4;
+                        currentY.get()[0] -= LINE_HEIGHT;
+
+                        // GPA (if set)
+                        if (edu.getGpa() != null && !edu.getGpa().isBlank()) {
+                            currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontRegular);
+                            String gpaLabel = isPtBr(locale) ? "CRA: " : "GPA: ";
+                            currentContentStream.get().beginText();
+                            currentContentStream.get().setFont(fontRegular, 11);
+                            currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
+                            currentContentStream.get().showText(gpaLabel + edu.getGpa());
+                            currentContentStream.get().endText();
+                            currentY.get()[0] -= LINE_HEIGHT;
+                        }
+                        currentY.get()[0] -= 4;
                     }
                 }
 
                 // ============ SKILLS SECTION ============
-                if (resume.getSkills() != null && !resume.getSkills().isEmpty()) {
+                boolean hasSkillGroups = resume.getSkillGroups() != null && !resume.getSkillGroups().isEmpty();
+                boolean hasSkills = resume.getSkills() != null && !resume.getSkills().isEmpty();
+                if (hasSkillGroups || hasSkills) {
                     currentY.get()[0] -= SECTION_SPACING;
                     currentY.get()[0] = ensureSpace(currentY.get()[0], 30, fontBold);
-                    currentY.get()[0] = drawSectionHeader(currentContentStream.get(), isPtBr(locale) ? "HABILIDADES" : "SKILLS",
-                            currentY.get()[0], fontBold);
+                    currentY.get()[0] = drawSectionHeader(currentContentStream.get(),
+                            isPtBr(locale) ? "HABILIDADES TÉCNICAS" : "TECHNICAL SKILLS", currentY.get()[0], fontBold);
 
-                    List<String> skillList = resume.getSkills();
-                    float colWidth = (CONTENT_WIDTH - 10) / 2;
-                    float col2X = MARGIN_LEFT + colWidth + 10;
-                    for (int si = 0; si < skillList.size(); si += 2) {
-                        currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontRegular);
-                        String leftSkill = "\u2022 " + skillList.get(si);
-                        currentContentStream.get().beginText();
-                        currentContentStream.get().setFont(fontRegular, 11);
-                        currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
-                        currentContentStream.get().showText(leftSkill);
-                        currentContentStream.get().endText();
-                        if (si + 1 < skillList.size()) {
-                            String rightSkill = "\u2022 " + skillList.get(si + 1);
+                    if (hasSkillGroups) {
+                        // Grouped layout: "Category  item1, item2, ..." one row per group
+                        float labelWidth = 120f; // fixed width for category label column
+                        float itemsX = MARGIN_LEFT + labelWidth;
+                        float itemsWidth = CONTENT_WIDTH - labelWidth;
+                        for (Resume.SkillGroup group : resume.getSkillGroups()) {
+                            if (group.getCategory() == null || group.getItems() == null || group.getItems().isEmpty())
+                                continue;
+                            currentY.get()[0] = ensureSpace(currentY.get()[0], BULLET_LINE_HEIGHT, fontRegular);
+                            // Category label bold
+                            currentContentStream.get().beginText();
+                            currentContentStream.get().setFont(fontBold, 11);
+                            currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
+                            currentContentStream.get().showText(group.getCategory());
+                            currentContentStream.get().endText();
+                            // Items as wrapped text to the right
+                            String itemsStr = String.join(", ", group.getItems());
+                            currentY.get()[0] = drawWrappedText(itemsStr, currentY.get()[0], fontRegular, 11,
+                                    itemsWidth, itemsX, BULLET_LINE_HEIGHT);
+                        }
+                    } else {
+                        // Flat 2-column bullet layout (legacy)
+                        List<String> skillList = resume.getSkills();
+                        float colWidth = (CONTENT_WIDTH - 10) / 2;
+                        float col2X = MARGIN_LEFT + colWidth + 10;
+                        for (int si = 0; si < skillList.size(); si += 2) {
+                            currentY.get()[0] = ensureSpace(currentY.get()[0], BULLET_LINE_HEIGHT, fontRegular);
+                            String leftSkill = "\u2022 " + skillList.get(si);
                             currentContentStream.get().beginText();
                             currentContentStream.get().setFont(fontRegular, 11);
-                            currentContentStream.get().newLineAtOffset(col2X, currentY.get()[0]);
-                            currentContentStream.get().showText(rightSkill);
+                            currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
+                            currentContentStream.get().showText(leftSkill);
                             currentContentStream.get().endText();
+                            if (si + 1 < skillList.size()) {
+                                String rightSkill = "\u2022 " + skillList.get(si + 1);
+                                currentContentStream.get().beginText();
+                                currentContentStream.get().setFont(fontRegular, 11);
+                                currentContentStream.get().newLineAtOffset(col2X, currentY.get()[0]);
+                                currentContentStream.get().showText(rightSkill);
+                                currentContentStream.get().endText();
+                            }
+                            currentY.get()[0] -= BULLET_LINE_HEIGHT;
                         }
-                        currentY.get()[0] -= LINE_HEIGHT;
                     }
                 }
 
@@ -457,7 +516,7 @@ public class ExportService {
                     currentY.get()[0] -= SECTION_SPACING;
                     currentY.get()[0] = ensureSpace(currentY.get()[0], 30, fontBold);
                     currentY.get()[0] = drawSectionHeader(currentContentStream.get(),
-                            isPtBr(locale) ? "CERTIFICAÇÕES" : "CERTIFICATIONS", currentY.get()[0], fontBold);
+                            isPtBr(locale) ? "CURSOS / CERTIFICAÇÕES" : "COURSES / CERTIFICATIONS", currentY.get()[0], fontBold);
 
                     for (Resume.Certification cert : resume.getCertifications()) {
                         currentY.get()[0] = ensureSpace(currentY.get()[0], LINE_HEIGHT, fontRegular);
@@ -473,6 +532,28 @@ public class ExportService {
                         currentContentStream.get().newLineAtOffset(MARGIN_LEFT, currentY.get()[0]);
                         currentContentStream.get().showText(certLine.toString());
                         currentContentStream.get().endText();
+
+                        // URL right-aligned on same line (blue, clickable)
+                        String certUrl = sanitizeUrl(cert.getUrl());
+                        if (certUrl != null) {
+                            String displayUrl = cert.getUrl().trim()
+                                    .replaceFirst("(?i)^https?://", "").replaceFirst("^www\\.", "");
+                            float urlFontSize = 10f;
+                            float urlWidth = fontRegular.getStringWidth(displayUrl) / 1000 * urlFontSize;
+                            float urlX = PAGE_WIDTH - MARGIN_RIGHT - urlWidth;
+                            float urlLinkY = currentY.get()[0];
+                            currentContentStream.get().setNonStrokingColor(26f / 255f, 115f / 255f, 232f / 255f);
+                            currentContentStream.get().beginText();
+                            currentContentStream.get().setFont(fontRegular, urlFontSize);
+                            currentContentStream.get().newLineAtOffset(urlX, currentY.get()[0]);
+                            currentContentStream.get().showText(displayUrl);
+                            currentContentStream.get().endText();
+                            currentContentStream.get().setNonStrokingColor(0, 0, 0);
+                            PDPage activePage = currentDocument.get()
+                                    .getPage(currentDocument.get().getNumberOfPages() - 1);
+                            addClickableLink(certUrl, urlX, urlLinkY, urlWidth, urlFontSize + 2, activePage);
+                        }
+
                         currentY.get()[0] -= LINE_HEIGHT;
                     }
                 }
@@ -571,18 +652,23 @@ public class ExportService {
      */
     private float drawWrappedText(String text, float y, PDFont font,
             float fontSize, float maxWidth, float startX) throws IOException {
+        return drawWrappedText(text, y, font, fontSize, maxWidth, startX, LINE_HEIGHT);
+    }
+
+    private float drawWrappedText(String text, float y, PDFont font,
+            float fontSize, float maxWidth, float startX, float lineHeight) throws IOException {
         if (text == null || text.isEmpty())
             return y;
 
         List<String> lines = wrapText(text, font, fontSize, maxWidth);
         for (String line : lines) {
-            y = ensureSpace(y, LINE_HEIGHT, font);
+            y = ensureSpace(y, lineHeight, font);
             currentContentStream.get().beginText();
             currentContentStream.get().setFont(font, fontSize);
             currentContentStream.get().newLineAtOffset(startX, y);
             currentContentStream.get().showText(line);
             currentContentStream.get().endText();
-            y -= LINE_HEIGHT;
+            y -= lineHeight;
         }
         return y;
     }
@@ -754,7 +840,7 @@ public class ExportService {
     // DOCX EXPORT
     // ═════════════════════════════════════════════════════════════════════
 
-    public byte[] exportToDocx(Resume resume) throws IOException {
+    public byte[] exportToDocx(Resume resume, String locale) throws IOException {
         try (XWPFDocument document = new XWPFDocument();
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
@@ -779,6 +865,21 @@ public class ExportService {
                 nameRun.setFontSize(16);
                 nameRun.setFontFamily("Times New Roman");
                 nameRun.setText(resume.getPersonalInfo().getFullName());
+            }
+
+            // Location on its own line between name and contacts
+            if (resume.getPersonalInfo() != null
+                    && resume.getPersonalInfo().getLocation() != null
+                    && !resume.getPersonalInfo().getLocation().isEmpty()) {
+                XWPFParagraph locPara = document.createParagraph();
+                locPara.setAlignment(ParagraphAlignment.CENTER);
+                locPara.setSpacingBefore(0);
+                locPara.setSpacingAfter(40);
+                XWPFRun locRun = locPara.createRun();
+                locRun.setItalic(true);
+                locRun.setFontSize(11);
+                locRun.setFontFamily("Times New Roman");
+                locRun.setText(resume.getPersonalInfo().getLocation());
             }
 
             // Contact Info centered with clickable links
@@ -844,20 +945,11 @@ public class ExportService {
                     first = false;
                 }
 
-                // Location (no link)
-                if (info.getLocation() != null && !info.getLocation().isEmpty()) {
-                    if (!first)
-                        addDocxSeparator(contactPara);
-                    XWPFRun locationRun = contactPara.createRun();
-                    locationRun.setFontSize(10);
-                    locationRun.setFontFamily("Times New Roman");
-                    locationRun.setText(info.getLocation());
-                }
             }
 
             // Summary
             if (resume.getSummary() != null && !resume.getSummary().isEmpty()) {
-                addDocxSectionWithBorder(document, "SUMMARY");
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "RESUMO" : "SUMMARY");
                 XWPFParagraph summaryPara = document.createParagraph();
                 summaryPara.setSpacingAfter(100);
                 XWPFRun summaryRun = summaryPara.createRun();
@@ -868,7 +960,7 @@ public class ExportService {
 
             // Experience
             if (resume.getExperience() != null && !resume.getExperience().isEmpty()) {
-                addDocxSectionWithBorder(document, "EXPERIENCE");
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "EXPERIÊNCIA" : "EXPERIENCE");
                 for (Resume.Experience exp : resume.getExperience()) {
                     // Company (Título 2): Bold + Uppercase + date range right-aligned
                     XWPFParagraph companyPara = document.createParagraph();
@@ -895,7 +987,7 @@ public class ExportService {
                         for (String bullet : exp.getBullets()) {
                             if (bullet != null && !bullet.trim().isEmpty()) {
                                 XWPFParagraph bulletPara = document.createParagraph();
-                                bulletPara.setIndentationLeft(357); // 0.63cm = 357 twips
+                                bulletPara.setIndentationLeft(0);
                                 bulletPara.setSpacingAfter(20);
                                 XWPFRun bulletRun = bulletPara.createRun();
                                 bulletRun.setFontSize(11);
@@ -909,7 +1001,7 @@ public class ExportService {
 
             // Projects
             if (resume.getProjects() != null && !resume.getProjects().isEmpty()) {
-                addDocxSectionWithBorder(document, "PROJECTS");
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "PROJETOS" : "PROJECTS");
                 for (Resume.Project proj : resume.getProjects()) {
                     XWPFParagraph titlePara = document.createParagraph();
                     titlePara.setSpacingBefore(120); // 6pt = 120 twips
@@ -921,20 +1013,19 @@ public class ExportService {
                     titleRun.setFontFamily("Times New Roman");
                     titleRun.setText(safeString(proj.getName()).toUpperCase());
 
-                    String dateRange = formatDateRange(proj.getStartDate(), proj.getEndDate(), false);
-                    if (!dateRange.isEmpty()) {
-                        titleRun.addTab();
-                        titleRun.setText(dateRange);
-                    }
-
-                    // Project URL
+                    // URL right-aligned on same line as name (tab-separated); date only if no URL
                     String projDocxUrl = proj.getUrl() != null ? proj.getUrl().trim() : null;
                     if (projDocxUrl != null && !projDocxUrl.isEmpty()) {
                         String fullUrl = projDocxUrl.startsWith("http") ? projDocxUrl : "https://" + projDocxUrl;
                         String displayUrl = projDocxUrl.replaceFirst("(?i)^https?://", "").replaceFirst("^www\\.", "");
-                        XWPFParagraph urlPara = document.createParagraph();
-                        urlPara.setSpacingAfter(0);
-                        addDocxLink(urlPara, displayUrl, fullUrl);
+                        titleRun.addTab();
+                        addDocxLink(titlePara, displayUrl, fullUrl);
+                    } else {
+                        String dateRange = formatDateRange(proj.getStartDate(), proj.getEndDate(), false);
+                        if (!dateRange.isEmpty()) {
+                            titleRun.addTab();
+                            titleRun.setText(dateRange);
+                        }
                     }
 
                     if (proj.getTechnologies() != null && !proj.getTechnologies().isEmpty()) {
@@ -947,11 +1038,20 @@ public class ExportService {
                         techRun.setText(String.join(", ", proj.getTechnologies()));
                     }
 
+                    if (proj.getDescription() != null && !proj.getDescription().trim().isEmpty()) {
+                        XWPFParagraph descPara = document.createParagraph();
+                        descPara.setSpacingAfter(50);
+                        XWPFRun descRun = descPara.createRun();
+                        descRun.setFontSize(11);
+                        descRun.setFontFamily("Times New Roman");
+                        descRun.setText(proj.getDescription().trim());
+                    }
+
                     if (proj.getBullets() != null) {
                         for (String bullet : proj.getBullets()) {
                             if (bullet != null && !bullet.trim().isEmpty()) {
                                 XWPFParagraph bulletPara = document.createParagraph();
-                                bulletPara.setIndentationLeft(357); // 0.63cm = 357 twips
+                                bulletPara.setIndentationLeft(0);
                                 bulletPara.setSpacingAfter(20);
                                 XWPFRun bulletRun = bulletPara.createRun();
                                 bulletRun.setFontSize(11);
@@ -965,7 +1065,7 @@ public class ExportService {
 
             // Education
             if (resume.getEducation() != null && !resume.getEducation().isEmpty()) {
-                addDocxSectionWithBorder(document, "EDUCATION");
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "FORMAÇÃO" : "EDUCATION");
                 for (Resume.Education edu : resume.getEducation()) {
                     XWPFParagraph instPara = document.createParagraph();
                     instPara.setSpacingBefore(120); // 6pt = 120 twips
@@ -989,26 +1089,61 @@ public class ExportService {
                     degreeRun.setFontFamily("Times New Roman");
                     degreeRun.setText(safeString(edu.getDegree()));
 
-                    if (edu.getGraduationDate() != null) {
+                    String eduDocxStart = formatMonthYear(edu.getStartDate());
+                    String eduDocxGrad = formatMonthYear(edu.getGraduationDate());
+                    String eduDocxDateRange = (!eduDocxStart.isEmpty() && !eduDocxGrad.isEmpty())
+                            ? eduDocxStart + " \u2014 " + eduDocxGrad : eduDocxGrad;
+                    if (!eduDocxDateRange.isEmpty()) {
                         degreeRun.addTab();
-                        degreeRun.setText(edu.getGraduationDate());
+                        degreeRun.setText(eduDocxDateRange);
+                    }
+
+                    // GPA (if set)
+                    if (edu.getGpa() != null && !edu.getGpa().isBlank()) {
+                        XWPFParagraph gpaPara = document.createParagraph();
+                        gpaPara.setSpacingAfter(100);
+                        XWPFRun gpaRun = gpaPara.createRun();
+                        gpaRun.setFontSize(11);
+                        gpaRun.setFontFamily("Times New Roman");
+                        String gpaLabel = isPtBr(locale) ? "CRA: " : "GPA: ";
+                        gpaRun.setText(gpaLabel + edu.getGpa());
                     }
                 }
             }
 
             // Skills
-            if (resume.getSkills() != null && !resume.getSkills().isEmpty()) {
-                addDocxSectionWithBorder(document, "SKILLS");
-                XWPFParagraph skillsPara = document.createParagraph();
-                XWPFRun skillsRun = skillsPara.createRun();
-                skillsRun.setFontSize(11);
-                skillsRun.setFontFamily("Times New Roman");
-                skillsRun.setText("Technical Skills: " + String.join(", ", resume.getSkills()));
+            boolean docxHasGroups = resume.getSkillGroups() != null && !resume.getSkillGroups().isEmpty();
+            boolean docxHasSkills = resume.getSkills() != null && !resume.getSkills().isEmpty();
+            if (docxHasGroups || docxHasSkills) {
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "COMPETÊNCIAS" : "TECHNICAL SKILLS");
+                if (docxHasGroups) {
+                    for (Resume.SkillGroup group : resume.getSkillGroups()) {
+                        if (group.getCategory() == null || group.getItems() == null || group.getItems().isEmpty())
+                            continue;
+                        XWPFParagraph grpPara = document.createParagraph();
+                        grpPara.setSpacingAfter(20);
+                        XWPFRun labelRun = grpPara.createRun();
+                        labelRun.setBold(true);
+                        labelRun.setFontSize(11);
+                        labelRun.setFontFamily("Times New Roman");
+                        labelRun.setText(group.getCategory() + ": ");
+                        XWPFRun itemsRun = grpPara.createRun();
+                        itemsRun.setFontSize(11);
+                        itemsRun.setFontFamily("Times New Roman");
+                        itemsRun.setText(String.join(", ", group.getItems()));
+                    }
+                } else {
+                    XWPFParagraph skillsPara = document.createParagraph();
+                    XWPFRun skillsRun = skillsPara.createRun();
+                    skillsRun.setFontSize(11);
+                    skillsRun.setFontFamily("Times New Roman");
+                    skillsRun.setText(String.join(", ", resume.getSkills()));
+                }
             }
 
             // Certifications
             if (resume.getCertifications() != null && !resume.getCertifications().isEmpty()) {
-                addDocxSectionWithBorder(document, "CERTIFICATIONS");
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "CERTIFICAÇÕES" : "COURSES / CERTIFICATIONS");
                 for (Resume.Certification cert : resume.getCertifications()) {
                     XWPFParagraph certPara = document.createParagraph();
                     certPara.setIndentationLeft(360);
@@ -1024,12 +1159,21 @@ public class ExportService {
                         certText.append(" (").append(cert.getDate()).append(")");
                     }
                     certRun.setText(certText.toString());
+
+                    // URL right-aligned on same line via tab
+                    String certDocxUrl = cert.getUrl() != null ? cert.getUrl().trim() : null;
+                    if (certDocxUrl != null && !certDocxUrl.isEmpty()) {
+                        String fullUrl = certDocxUrl.startsWith("http") ? certDocxUrl : "https://" + certDocxUrl;
+                        String displayUrl = certDocxUrl.replaceFirst("(?i)^https?://", "").replaceFirst("^www\\.", "");
+                        certRun.addTab();
+                        addDocxLink(certPara, displayUrl, fullUrl);
+                    }
                 }
             }
 
             // Languages
             if (resume.getLanguages() != null && !resume.getLanguages().isEmpty()) {
-                addDocxSectionWithBorder(document, "LANGUAGES");
+                addDocxSectionWithBorder(document, isPtBr(locale) ? "IDIOMAS" : "LANGUAGES");
                 XWPFParagraph langPara = document.createParagraph();
                 XWPFRun langRun = langPara.createRun();
                 langRun.setFontSize(11);

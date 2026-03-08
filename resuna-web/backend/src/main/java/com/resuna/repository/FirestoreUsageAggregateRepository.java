@@ -33,7 +33,12 @@ public class FirestoreUsageAggregateRepository implements UsageAggregateReposito
             if (!doc.exists()) {
                 return Optional.empty();
             }
-            return Optional.ofNullable(doc.toObject(UsageAggregate.class));
+            try {
+                return Optional.ofNullable(doc.toObject(UsageAggregate.class));
+            } catch (RuntimeException e) {
+                logger.warn("Failed to deserialize UsageAggregate {}: {}", id, e.getMessage());
+                return Optional.empty();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return Optional.empty();
@@ -70,9 +75,13 @@ public class FirestoreUsageAggregateRepository implements UsageAggregateReposito
                     .get();
             List<UsageAggregate> result = new ArrayList<>();
             for (DocumentSnapshot doc : query.get().getDocuments()) {
-                UsageAggregate aggregate = doc.toObject(UsageAggregate.class);
-                if (aggregate != null) {
-                    result.add(aggregate);
+                try {
+                    UsageAggregate aggregate = doc.toObject(UsageAggregate.class);
+                    if (aggregate != null) {
+                        result.add(aggregate);
+                    }
+                } catch (RuntimeException e) {
+                    logger.warn("Failed to deserialize UsageAggregate {}: {}", doc.getId(), e.getMessage());
                 }
             }
             return result;

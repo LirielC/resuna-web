@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, notFound } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
 
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
     >("overview");
     const [error, setError] = useState<string | null>(null);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    const API_URL = '';
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -103,8 +103,8 @@ export default function AdminDashboard() {
             }
             setUser(currentUser);
 
-            // Check if user is admin via custom claims
-            const tokenResult = await currentUser.getIdTokenResult();
+            // Check if user is admin via custom claims (force refresh to get latest claims)
+            const tokenResult = await currentUser.getIdTokenResult(true);
             if (tokenResult.claims.admin) {
                 setIsAdmin(true);
                 fetchDashboardData(await currentUser.getIdToken());
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
             if (usersRes.ok) {
                 const usersData = await usersRes.json();
                 setUsers(
-                    usersData.map((row: any) => ({
+                    usersData.map((row: UserInfo) => ({
                         userId: row.userId,
                         email: row.email,
                         lastActivity: row.lastActivity,
@@ -184,7 +184,9 @@ export default function AdminDashboard() {
             }
         } catch (err) {
             setError("Failed to load dashboard data");
-            console.error(err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error(err);
+            }
         } finally {
             setLoading(false);
         }
@@ -263,24 +265,9 @@ export default function AdminDashboard() {
         );
     }
 
-    if (!isAdmin) {
-        return (
-            <div className="min-h-screen bg-[#F8F6F1] flex items-center justify-center p-4">
-                <div className="bg-white border border-red-200 rounded-lg p-12 text-center max-w-md shadow-sm">
-                    <div className="text-4xl mb-6">🔒</div>
-                    <h1 className="text-3xl font-serif text-stone-900 mb-4">Restricted Access</h1>
-                    <p className="text-stone-600 mb-8 leading-relaxed">
-                        This area is reserved for administrators only. Please return to the main dashboard.
-                    </p>
-                    <button
-                        onClick={() => router.push("/dashboard")}
-                        className="px-8 py-3 bg-stone-900 text-white font-serif hover:bg-stone-800 transition-colors rounded-sm"
-                    >
-                        Return to Dashboard
-                    </button>
-                </div>
-            </div>
-        );
+    if (!loading && !isAdmin) {
+        notFound();
+        return null;
     }
 
     return (
@@ -310,7 +297,7 @@ export default function AdminDashboard() {
                             {user?.email}
                         </span>
                         <button
-                            onClick={() => router.push("/dashboard")}
+                            onClick={() => router.push("/resumes")}
                             className="text-sm font-medium text-orange-700 hover:text-orange-800 transition-colors hover:underline underline-offset-4"
                         >
                             Exit

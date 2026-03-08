@@ -33,7 +33,7 @@ function CoverLettersContent() {
   useEffect(() => {
     if (!user) return;
     coverLetterApi
-      .getAll(user.uid)
+      .getAll()
       .then(setLetters)
       .finally(() => setIsLoading(false));
   }, [user]);

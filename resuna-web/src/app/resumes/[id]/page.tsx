@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo, use } from "react";
 import { motion } from "framer-motion";
 import {
@@ -23,22 +24,13 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { Badge } from "@/components/ui/Badge";
-import { resumeApi, atsApi, triggerDownload } from "@/lib/api";
+import { resumeApi, atsApi, triggerDownload, ApiRequestError } from "@/lib/api";
 import { computeCompleteness } from "@/lib/completeness";
+import { maskPhoneBR } from "@/lib/validation";
 import type { Resume, Experience, Education, Project, Certification, Language } from "@/lib/types";
 import { useTranslation } from "@/contexts/LanguageContext";
-
-// Design System: Editorial Luxury
-const THEME = {
-  bg: "bg-[#F8F6F1]", // Cream Paper
-  text: "text-stone-900",
-  textMuted: "text-stone-500",
-  accent: "text-orange-600",
-  border: "border-stone-200",
-  cardBg: "bg-white",
-  fontDisplay: "font-display", // Playfair Display
-  fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
+import { GrainOverlay } from "@/components/ui/GrainOverlay";
 
 const tabs = [
   { id: "basics", label: "The Basics", required: true },
@@ -74,6 +66,7 @@ function sanitizeUrl(raw: string): string {
 export default function ResumeEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t, locale } = useTranslation();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("basics");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,6 +74,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
   const [error, setError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingDocx, setDownloadingDocx] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
@@ -104,6 +98,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [newSkill, setNewSkill] = useState("");
+  const [techInputs, setTechInputs] = useState<string[]>([]);
 
   const completeness = useMemo(() => computeCompleteness({
     title,
@@ -118,46 +113,46 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
   }), [title, personalInfo, summary, experiences, projects, educations, skills, certifications, languages]);
 
   useEffect(() => {
-    loadResume();
-  }, [id]);
-
-  const loadResume = async () => {
-    try {
-      setIsLoading(true);
-      const data = await resumeApi.getById(id);
-      setResume(data);
-      setTitle(data.title || "");
-      setPersonalInfo({
-        fullName: data.personalInfo?.fullName || "",
-        email: data.personalInfo?.email || "",
-        phone: data.personalInfo?.phone || "",
-        location: data.personalInfo?.location || "",
-        linkedin: data.personalInfo?.linkedin || "",
-        github: data.personalInfo?.github || "",
-        website: data.personalInfo?.website || "",
-      });
-      setSummary(data.summary || "");
-      setExperiences(data.experience || []);
-      setProjects(data.projects || []);
-      setEducations(data.education || []);
-      setSkills(data.skills || []);
-      setCertifications(data.certifications || []);
-      setLanguages(data.languages || []);
-      setLastSaved("Just loaded");
-
-      // Try to get ATS score
+    const loadResume = async () => {
       try {
-        const score = await atsApi.getScore(id);
-        setAtsScore(score.score);
-      } catch {
-        // No score available
+        setIsLoading(true);
+        const data = await resumeApi.getById(id);
+        setResume(data);
+        setTitle(data.title || "");
+        setPersonalInfo({
+          fullName: data.personalInfo?.fullName || "",
+          email: data.personalInfo?.email || "",
+          phone: data.personalInfo?.phone || "",
+          location: data.personalInfo?.location || "",
+          linkedin: data.personalInfo?.linkedin || "",
+          github: data.personalInfo?.github || "",
+          website: data.personalInfo?.website || "",
+        });
+        setSummary(data.summary || "");
+        setExperiences(data.experience || []);
+        setProjects(data.projects || []);
+        setTechInputs((data.projects || []).map((p: Project) => (p.technologies || []).join(", ")));
+        setEducations(data.education || []);
+        setSkills(data.skills || []);
+        setCertifications(data.certifications || []);
+        setLanguages(data.languages || []);
+        setLastSaved(t("editor.justLoaded"));
+
+        // Try to get ATS score
+        try {
+          const score = await atsApi.getScore(id);
+          if (score) setAtsScore(score.score);
+        } catch {
+          // No score available
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load resume");
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load resume");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    loadResume();
+  }, [id, t]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -175,7 +170,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
         certifications,
         languages,
       });
-      setLastSaved("Just now");
+      setLastSaved(t("editor.justNow"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -185,7 +180,20 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
 
   const handleDownloadPdf = async () => {
     setDownloadingPdf(true);
+    setError(null);
     try {
+      await resumeApi.update(id, {
+        title,
+        personalInfo,
+        summary,
+        experience: experiences,
+        projects,
+        education: educations,
+        skills,
+        certifications,
+        languages,
+      });
+      setLastSaved(t("editor.justNow"));
       const blob = await resumeApi.downloadPdf(id, locale);
       const filename = `${title || "resume"}.pdf`;
       triggerDownload(blob, filename);
@@ -198,14 +206,56 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
 
   const handleDownloadDocx = async () => {
     setDownloadingDocx(true);
+    setError(null);
     try {
-      const blob = await resumeApi.downloadDocx(id);
+      await resumeApi.update(id, {
+        title,
+        personalInfo,
+        summary,
+        experience: experiences,
+        projects,
+        education: educations,
+        skills,
+        certifications,
+        languages,
+      });
+      setLastSaved(t("editor.justNow"));
+      const blob = await resumeApi.downloadDocx(id, locale);
       const filename = `${title || "resume"}.docx`;
       triggerDownload(blob, filename);
     } catch (err) {
-      setError("Failed to download DOCX");
+      setError(t("editor.failedDownloadDocx"));
     } finally {
       setDownloadingDocx(false);
+    }
+  };
+
+  const handleTranslate = async () => {
+    setIsTranslating(true);
+    setError(null);
+    try {
+      // Save current state first so all fields (including location) are included in translation
+      await resumeApi.update(id, {
+        title,
+        personalInfo,
+        summary,
+        experience: experiences,
+        projects,
+        education: educations,
+        skills,
+        certifications,
+        languages,
+      });
+      const translated = await resumeApi.translateToEnglish(id);
+      // Open translated resume in editor
+      router.push(`/resumes/${translated.id}`);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 403) {
+        setError("Você atingiu o limite de créditos diários. Seus créditos serão renovados à meia-noite.");
+      } else {
+        setError(err instanceof Error ? err.message : "Falha ao traduzir. Tente novamente.");
+      }
+      setIsTranslating(false);
     }
   };
 
@@ -229,10 +279,8 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
 
   // Project handlers
   const addProject = () => {
-    setProjects([
-      ...projects,
-      { name: "", description: "", technologies: [], url: "", bullets: [""] },
-    ]);
+    setProjects([...projects, { name: "", description: "", technologies: [], url: "", bullets: [""] }]);
+    setTechInputs([...techInputs, ""]);
   };
 
   const updateProject = (index: number, field: keyof Project, value: string | string[]) => {
@@ -243,6 +291,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
 
   const removeProject = (index: number) => {
     setProjects(projects.filter((_, i) => i !== index));
+    setTechInputs(techInputs.filter((_, i) => i !== index));
   };
 
   // Education handlers
@@ -332,13 +381,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className={`min-h-screen ${THEME.bg} ${THEME.fontBody} text-stone-900 selection:bg-orange-100 selection:text-orange-900`}>
-      {/* Texture Overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-        }}
-      />
+      <GrainOverlay />
 
       <Header />
 
@@ -417,6 +460,29 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
                 >
                   {downloadingPdf ? <Spinner size="sm" /> : <Download className="w-4 h-4 mr-2" />}
                   PDF
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDownloadDocx}
+                  disabled={downloadingDocx}
+                  className="font-serif hover:bg-stone-200/50"
+                >
+                  {downloadingDocx ? <Spinner size="sm" /> : <FileDown className="w-4 h-4 mr-2" />}
+                  DOCX
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTranslate}
+                  disabled={isTranslating}
+                  className="font-serif hover:bg-stone-200/50"
+                  title="Traduzir para inglês"
+                >
+                  {isTranslating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Globe className="w-4 h-4 mr-2" />}
+                  EN
                 </Button>
 
                 <Button size="sm" onClick={handleSave} disabled={isSaving} className="font-serif shadow-orange">
@@ -505,7 +571,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
                         label={t('editor.phoneNumber')}
                         placeholder={t('editor.phonePlaceholder')}
                         value={personalInfo.phone}
-                        onChange={(e) => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
+                        onChange={(e) => setPersonalInfo({ ...personalInfo, phone: maskPhoneBR(e.target.value) })}
                       />
                       <EditorialInput
                         label={t('editor.currentLocation')}
@@ -655,8 +721,9 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
                         <EditorialInput
                           label={t('editor.techStack')}
                           placeholder={t('editor.techStackPlaceholder')}
-                          value={proj.technologies?.join(", ") || ""}
-                          onChange={(e) => updateProject(index, "technologies", e.target.value.split(",").map(t => t.trim()).filter(Boolean))}
+                          value={techInputs[index] ?? (proj.technologies?.join(", ") || "")}
+                          onChange={(e) => setTechInputs(prev => { const n = [...prev]; n[index] = e.target.value; return n; })}
+                          onBlur={(e) => updateProject(index, "technologies", e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean))}
                         />
                         <div className="grid sm:grid-cols-2 gap-5">
                           <MonthPicker
@@ -807,6 +874,12 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
                               onChange={(value) => updateCertification(index, "date", value)}
                             />
                           </div>
+                          <EditorialInput
+                            label="URL (opcional)"
+                            placeholder="https://www.credly.com/badges/..."
+                            value={cert.url || ""}
+                            onChange={(e) => updateCertification(index, "url", e.target.value)}
+                          />
                         </div>
                       ))}
                       <Button variant="ghost" onClick={addCertification} className="w-full">{t('editor.addCertificate')}</Button>
@@ -997,7 +1070,7 @@ function EditorialInput({ label, headless, className, ...props }: React.InputHTM
         </label>
       )}
       <input
-        className="w-full py-3 bg-transparent border-b border-stone-300 focus:border-orange-600 focus:outline-none transition-colors font-serif text-lg placeholder-stone-300 text-stone-900"
+        className="w-full py-3 bg-transparent border-b border-stone-300 focus:border-orange-600 focus:outline-none transition-colors font-serif text-lg placeholder-stone-400 text-stone-900"
         {...props}
       />
     </div>
@@ -1013,7 +1086,7 @@ function EditorialTextarea({ label, ...props }: React.TextareaHTMLAttributes<HTM
         </label>
       )}
       <textarea
-        className="w-full p-4 bg-stone-50/50 border border-stone-200 rounded-sm focus:border-orange-500 focus:bg-white focus:outline-none transition-all font-serif leading-relaxed text-stone-800 placeholder-stone-400"
+        className="w-full p-4 bg-white/80 border border-stone-300 rounded-sm focus:border-orange-500 focus:bg-white focus:outline-none transition-all font-serif leading-relaxed text-stone-800 placeholder-stone-400"
         {...props}
       />
     </div>

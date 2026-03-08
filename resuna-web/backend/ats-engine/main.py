@@ -74,7 +74,7 @@ app.add_middleware(
 def verify_internal_api_key(request: Request) -> None:
     if not ATS_API_KEY:
         logger.error("ATS_API_KEY not configured")
-        raise HTTPException(status_code=500, detail="ATS engine not configured")
+        raise HTTPException(status_code=503, detail="Service unavailable")
 
     provided = request.headers.get("X-ATS-API-KEY")
     if not provided or not hmac.compare_digest(provided, ATS_API_KEY):
@@ -733,8 +733,8 @@ async def analyze_resume(request: AnalysisRequest):
         return result
         
     except Exception as e:
-        logger.error(f"❌ Error analyzing resume: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        logger.error(f"Error analyzing resume: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
 
 
 if __name__ == "__main__":

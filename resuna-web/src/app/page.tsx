@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { GrainOverlay } from '@/components/ui/GrainOverlay';
 
 /*
  * DESIGN DIRECTION: Refined Editorial with Warmth
@@ -15,16 +17,8 @@ import { useTranslation } from '@/contexts/LanguageContext';
  */
 
 export default function Home() {
-  const heroRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
-
-  useEffect(() => {
-    // Add loaded class for animations after mount
-    const timer = setTimeout(() => {
-      heroRef.current?.classList.add('loaded');
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <>
@@ -40,13 +34,7 @@ export default function Home() {
           fontFamily: "'Crimson Pro', Georgia, serif",
         }}
       >
-        {/* Grain Texture Overlay */}
-        <div
-          className="fixed inset-0 pointer-events-none z-50 opacity-[0.03]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          }}
-        />
+        <GrainOverlay />
 
         {/* Decorative Background Elements */}
         <div
@@ -78,16 +66,12 @@ export default function Home() {
               Resuna
             </Link>
 
+            {/* Desktop links */}
             <div className="hidden md:flex items-center" style={{ gap: '3rem' }}>
               <Link
                 href="#features"
-                className="text-[17px] tracking-wide transition-colors duration-300"
-                style={{
-                  color: '#6B6760',
-                  fontWeight: 400,
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#C46B48'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#6B6760'}
+                className="text-[17px] tracking-wide transition-colors duration-300 text-[#6B6760] hover:text-[#C46B48]"
+                style={{ fontWeight: 400 }}
               >
                 Recursos
               </Link>
@@ -99,26 +83,85 @@ export default function Home() {
                 {t('landing.signIn')}
               </Link>
             </div>
+
+            {/* Mobile: Entrar + hamburger */}
+            <div className="flex md:hidden items-center gap-3">
+              <Link
+                href="/login"
+                className="text-[15px] font-medium px-4 py-2 rounded"
+                style={{
+                  color: '#2A2824',
+                  border: '1px solid #C4BCB0',
+                }}
+              >
+                {t('landing.signIn')}
+              </Link>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded"
+                style={{ backgroundColor: '#EFECE6', color: '#2A2824' }}
+                aria-label="Menu"
+              >
+                {mobileMenuOpen ? (
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="4" y1="4" x2="16" y2="16" /><line x1="16" y1="4" x2="4" y2="16" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <line x1="3" y1="6" x2="17" y2="6" /><line x1="3" y1="12" x2="17" y2="12" /><line x1="3" y1="18" x2="17" y2="18" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Mobile dropdown menu */}
+          {mobileMenuOpen && (
+            <div
+              className="md:hidden mt-4 py-4 px-6 rounded-lg"
+              style={{ backgroundColor: '#EFECE6', border: '1px solid #E0DBD3' }}
+            >
+              <Link
+                href="#features"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-3 text-[17px]"
+                style={{ color: '#2A2824', borderBottom: '1px solid #E0DBD3' }}
+              >
+                Recursos
+              </Link>
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-3 text-[17px] font-medium"
+                style={{ color: '#C46B48' }}
+              >
+                {t('landing.signIn')}
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block mt-3 py-3 px-4 text-center text-[15px] font-medium rounded text-white"
+                style={{ backgroundColor: '#C46B48' }}
+              >
+                {t('landing.beginJourney')}
+              </Link>
+            </div>
+          )}
         </nav>
 
         {/* Hero Section */}
-        <section
-          ref={heroRef}
-          className="hero-section relative z-10 pt-12 lg:pt-20 pb-32"
-        >
+        <section className="relative z-10 pt-12 lg:pt-20 pb-32">
           <div className="max-w-7xl mx-auto px-8 lg:px-16">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-4 items-start">
 
               {/* Left Column - Text */}
               <div className="lg:col-span-5 lg:pt-12">
                 {/* Small Label */}
-                <div
-                  className="hero-label inline-flex items-center mb-8"
-                  style={{
-                    opacity: 0,
-                    transform: 'translateY(20px)',
-                  }}
+                <motion.div
+                  className="inline-flex items-center mb-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
                 >
                   <span
                     className="w-8 h-[1px] mr-3"
@@ -130,11 +173,11 @@ export default function Home() {
                   >
                     {t('landing.resumeIntelligence')}
                   </span>
-                </div>
+                </motion.div>
 
                 {/* Headline */}
-                <h1
-                  className="hero-headline mb-10"
+                <motion.h1
+                  className="mb-10"
                   style={{
                     fontFamily: "'Playfair Display', Georgia, serif",
                     fontSize: 'clamp(3.5rem, 7vw, 5.5rem)',
@@ -142,56 +185,41 @@ export default function Home() {
                     lineHeight: 1.05,
                     color: '#2A2824',
                     letterSpacing: '-0.03em',
-                    opacity: 0,
-                    transform: 'translateY(30px)',
                   }}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
                 >
                   {t('landing.heroTitle')}<br />
                   <em style={{ fontWeight: 400, fontStyle: 'italic' }}>{t('landing.heroTitleEmphasis')}</em>
-                </h1>
+                </motion.h1>
 
                 {/* Description */}
-                <p
-                  className="hero-description mb-12 max-w-lg"
+                <motion.p
+                  className="mb-12 max-w-lg"
                   style={{
                     fontSize: '21px',
                     lineHeight: 1.75,
                     color: '#5C5850',
                     fontWeight: 300,
-                    opacity: 0,
-                    transform: 'translateY(30px)',
                   }}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.35 }}
                 >
                   {t('landing.heroDescription')}
-                </p>
+                </motion.p>
 
                 {/* CTA */}
-                <div
-                  className="hero-cta"
-                  style={{
-                    opacity: 0,
-                    transform: 'translateY(30px)',
-                  }}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
                 >
                   <Link
                     href="/signup"
-                    className="group inline-flex items-center text-[17px] font-medium tracking-wide transition-all duration-300"
-                    style={{
-                      color: '#fff',
-                      backgroundColor: '#C46B48',
-                      padding: '16px 32px',
-                      borderRadius: '2px',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#A85A3C';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(196, 107, 72, 0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#C46B48';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
+                    className="group inline-flex items-center text-[17px] font-medium tracking-wide transition-all duration-300 text-white bg-[#C46B48] hover:bg-[#A85A3C] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(196,107,72,0.3)]"
+                    style={{ padding: '16px 32px', borderRadius: '2px' }}
                   >
                     {t('landing.beginJourney')}
                     <svg
@@ -201,14 +229,14 @@ export default function Home() {
                       <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </Link>
-                </div>
+                </motion.div>
               </div>
 
               {/* Right Column - Visual */}
               <div className="lg:col-span-7 relative hidden lg:block" style={{ minHeight: '480px' }}>
                 {/* Decorative Shape */}
-                <div
-                  className="hero-shape absolute"
+                <motion.div
+                  className="absolute"
                   style={{
                     top: '8%',
                     right: '5%',
@@ -216,14 +244,15 @@ export default function Home() {
                     height: '420px',
                     background: 'linear-gradient(165deg, #D4835A 0%, #C46B48 50%, #9B4E35 100%)',
                     borderRadius: '180px 180px 240px 60px',
-                    transform: 'rotate(-8deg)',
-                    opacity: 0,
                   }}
+                  initial={{ opacity: 0, rotate: -8 }}
+                  animate={{ opacity: 1, rotate: -8 }}
+                  transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
                 />
 
                 {/* Decorative Elements */}
-                <div
-                  className="hero-decor-1 absolute"
+                <motion.div
+                  className="absolute"
                   style={{
                     top: '5%',
                     right: '38%',
@@ -231,37 +260,40 @@ export default function Home() {
                     height: '6px',
                     backgroundColor: '#E8B89A',
                     borderRadius: '50%',
-                    opacity: 0,
                   }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, ease: 'easeOut', delay: 0.9 }}
                 />
-                <div
-                  className="hero-decor-2 absolute"
-                  style={{
-                    top: '18%',
-                    right: '8%',
-                    opacity: 0,
-                  }}
+                <motion.div
+                  className="absolute"
+                  style={{ top: '18%', right: '8%' }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, ease: 'easeOut', delay: 1.0 }}
                 >
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="#E8C9A0">
                     <path d="M10 0L12.5 7.5L20 10L12.5 12.5L10 20L7.5 12.5L0 10L7.5 7.5L10 0Z" />
                   </svg>
-                </div>
-                <div
-                  className="hero-decor-3 absolute"
+                </motion.div>
+                <motion.div
+                  className="absolute"
                   style={{
                     top: '65%',
                     right: '42%',
                     width: '4px',
                     height: '4px',
                     backgroundColor: '#C9B89A',
-                    transform: 'rotate(45deg)',
-                    opacity: 0,
+                    rotate: '45deg',
                   }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, ease: 'easeOut', delay: 1.1 }}
                 />
 
                 {/* Resume Card */}
-                <div
-                  className="hero-resume absolute bg-white"
+                <motion.div
+                  className="absolute bg-white"
                   style={{
                     top: '12%',
                     right: '18%',
@@ -269,9 +301,10 @@ export default function Home() {
                     padding: '28px 24px',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
                     borderRadius: '3px',
-                    transform: 'rotate(-6deg)',
-                    opacity: 0,
                   }}
+                  initial={{ opacity: 0, y: 40, rotate: -6 }}
+                  animate={{ opacity: 1, y: 0, rotate: -6 }}
+                  transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.5 }}
                 >
                   {/* Resume Header */}
                   <div className="mb-5 pb-4" style={{ borderBottom: '1px solid #EEEAE4' }}>
@@ -292,7 +325,7 @@ export default function Home() {
                     { label: t('landing.education'), lines: [100, 70] },
                     { label: t('landing.skills'), lines: [60, 45, 55] },
                   ].map((section, i) => (
-                    <div key={i} className={i < 2 ? 'mb-5' : ''}>
+                    <div key={section.label} className={i < 2 ? 'mb-5' : ''}>
                       <div
                         className="text-[9px] uppercase tracking-[0.15em] font-semibold mb-2"
                         style={{ color: '#C46B48' }}
@@ -313,19 +346,21 @@ export default function Home() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </motion.div>
 
                 {/* Score Badge */}
-                <div
-                  className="hero-score absolute bg-white rounded-full flex flex-col items-center justify-center"
+                <motion.div
+                  className="absolute bg-white rounded-full flex flex-col items-center justify-center"
                   style={{
                     top: '6%',
                     right: '12%',
                     width: '88px',
                     height: '88px',
                     boxShadow: '0 12px 40px rgba(0, 0, 0, 0.12)',
-                    opacity: 0,
                   }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.8 }}
                 >
                   <svg width="68" height="68" viewBox="0 0 68 68" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
                     <circle cx="34" cy="34" r="28" fill="none" stroke="#EDF3EE" strokeWidth="4" />
@@ -350,7 +385,7 @@ export default function Home() {
                   >
                     {t('landing.atsScore')}
                   </span>
-                </div>
+                </motion.div>
               </div>
             </div>
           </div>
@@ -403,8 +438,8 @@ export default function Home() {
                   title: t('landing.feature03Title'),
                   desc: t('landing.feature03Desc'),
                 },
-              ].map((feature, i) => (
-                <div key={i} className="group">
+              ].map((feature) => (
+                <div key={feature.num} className="group">
                   <div
                     className="text-[13px] uppercase tracking-[0.18em] mb-5 transition-colors duration-300"
                     style={{ color: '#C46B48' }}
@@ -461,21 +496,8 @@ export default function Home() {
             </p>
             <Link
               href="/signup"
-              className="inline-flex items-center text-[17px] font-medium tracking-wide transition-all duration-300"
-              style={{
-                color: '#fff',
-                backgroundColor: '#C46B48',
-                padding: '16px 40px',
-                borderRadius: '2px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#A85A3C';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#C46B48';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+              className="inline-flex items-center text-[17px] font-medium tracking-wide transition-all duration-300 text-white bg-[#C46B48] hover:bg-[#A85A3C] hover:-translate-y-0.5"
+              style={{ padding: '16px 40px', borderRadius: '2px' }}
             >
               {t('landing.startFree')}
             </Link>
@@ -504,96 +526,27 @@ export default function Home() {
                 <Link
                   key={item}
                   href={i === 0 ? '/terms' : '/privacy'}
-                  className="text-[15px] transition-colors duration-300"
-                  style={{ color: '#8A847A' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#C46B48'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#8A847A'}
+                  className="text-[15px] transition-colors duration-300 text-[#8A847A] hover:text-[#C46B48]"
                 >
                   {item}
                 </Link>
               ))}
             </div>
-            <span
-              className="text-[13px]"
-              style={{ color: '#A8A29E' }}
+            <a
+              href="https://github.com/LirielC/resuna-web"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[13px] transition-colors duration-300 text-[#8A847A] hover:text-[#C46B48]"
             >
-              © 2026
-            </span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              Feito por LirielC
+            </a>
           </div>
         </footer>
       </div>
 
-      {/* Animations */}
-      <style jsx>{`
-        .hero-section.loaded .hero-label {
-          animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
-        }
-        .hero-section.loaded .hero-headline {
-          animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
-        }
-        .hero-section.loaded .hero-description {
-          animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
-        }
-        .hero-section.loaded .hero-cta {
-          animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
-        }
-        .hero-section.loaded .hero-shape {
-          animation: shapeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
-        }
-        .hero-section.loaded .hero-resume {
-          animation: resumeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
-        }
-        .hero-section.loaded .hero-score {
-          animation: scoreIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
-        }
-        .hero-section.loaded .hero-decor-1 {
-          animation: decorIn 0.6s ease-out 0.9s forwards;
-        }
-        .hero-section.loaded .hero-decor-2 {
-          animation: decorIn 0.6s ease-out 1s forwards;
-        }
-        .hero-section.loaded .hero-decor-3 {
-          animation: decorIn 0.6s ease-out 1.1s forwards;
-        }
-
-        @keyframes fadeUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes shapeIn {
-          to {
-            opacity: 1;
-            transform: rotate(-8deg);
-          }
-        }
-        @keyframes resumeIn {
-          0% {
-            opacity: 0;
-            transform: translateY(40px) rotate(-6deg);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) rotate(-6deg);
-          }
-        }
-        @keyframes scoreIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.8);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        @keyframes decorIn {
-          to {
-            opacity: 1;
-          }
-        }
-      `}</style>
     </>
   );
 }

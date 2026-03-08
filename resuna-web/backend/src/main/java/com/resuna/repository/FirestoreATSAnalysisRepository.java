@@ -176,6 +176,18 @@ public class FirestoreATSAnalysisRepository implements ATSAnalysisRepository {
         }
     }
     
+    public void deleteAllByUserId(String userId) throws ExecutionException, InterruptedException {
+        CollectionReference analysesRef = getUserAnalysesCollection(userId);
+        List<QueryDocumentSnapshot> docs = analysesRef.get().get().getDocuments();
+        if (!docs.isEmpty()) {
+            WriteBatch batch = firestore.batch();
+            docs.forEach(doc -> batch.delete(doc.getReference()));
+            batch.commit().get();
+        }
+        // Delete the parent user document too
+        firestore.collection(COLLECTION_USERS).document(userId).delete().get();
+    }
+
     // Helper methods
     
     private CollectionReference getUserAnalysesCollection(String userId) {

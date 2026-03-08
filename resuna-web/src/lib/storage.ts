@@ -1,7 +1,19 @@
 import type { Resume, CoverLetter } from './types';
 
-const RESUMES_KEY = 'resuna_resumes';
-const COVER_LETTERS_KEY = 'resuna_cover_letters';
+let _currentUserId: string | null = null;
+
+/** Call this whenever the authenticated user changes (login/logout). */
+export function setStorageUser(userId: string | null): void {
+    _currentUserId = userId;
+}
+
+function resumesKey(): string {
+    return _currentUserId ? `resuna_resumes_${_currentUserId}` : 'resuna_resumes';
+}
+
+function coverLettersKey(): string {
+    return _currentUserId ? `resuna_cover_letters_${_currentUserId}` : 'resuna_cover_letters';
+}
 
 function readJson<T>(key: string): T[] {
     if (typeof window === 'undefined') return [];
@@ -29,7 +41,7 @@ function isValidResumeShape(obj: unknown): obj is Resume {
 
 export const localResumeStorage = {
     getAll(): Resume[] {
-        return readJson<Resume>(RESUMES_KEY);
+        return readJson<Resume>(resumesKey());
     },
 
     getById(id: string): Resume | null {
@@ -48,7 +60,7 @@ export const localResumeStorage = {
             } else {
                 all.push(updated);
             }
-            writeJson(RESUMES_KEY, all);
+            writeJson(resumesKey(), all);
             return updated;
         }
 
@@ -59,12 +71,17 @@ export const localResumeStorage = {
             updatedAt: now,
         } as Resume;
         all.push(created);
-        writeJson(RESUMES_KEY, all);
+        writeJson(resumesKey(), all);
         return created;
     },
 
     delete(id: string): void {
-        writeJson(RESUMES_KEY, this.getAll().filter((r) => r.id !== id));
+        writeJson(resumesKey(), this.getAll().filter((r) => r.id !== id));
+    },
+
+    clear(): void {
+        if (typeof window === 'undefined') return;
+        window.localStorage.removeItem(resumesKey());
     },
 
     exportJson(): string {
@@ -95,14 +112,14 @@ export const localResumeStorage = {
             imported++;
         }
 
-        writeJson(RESUMES_KEY, existing);
+        writeJson(resumesKey(), existing);
         return { imported, skipped };
     },
 };
 
 export const localCoverLetterStorage = {
     getAll(): CoverLetter[] {
-        return readJson<CoverLetter>(COVER_LETTERS_KEY);
+        return readJson<CoverLetter>(coverLettersKey());
     },
 
     getByResume(resumeId: string): CoverLetter[] {
@@ -127,7 +144,7 @@ export const localCoverLetterStorage = {
             } else {
                 all.push(updated);
             }
-            writeJson(COVER_LETTERS_KEY, all);
+            writeJson(coverLettersKey(), all);
             return updated;
         }
 
@@ -138,7 +155,7 @@ export const localCoverLetterStorage = {
             updatedAt: now,
         } as CoverLetter;
         all.push(created);
-        writeJson(COVER_LETTERS_KEY, all);
+        writeJson(coverLettersKey(), all);
         return created;
     },
 
@@ -147,11 +164,16 @@ export const localCoverLetterStorage = {
         const idx = all.findIndex((c) => c.id === id);
         if (idx >= 0) {
             all[idx] = { ...all[idx], content, updatedAt: new Date().toISOString() };
-            writeJson(COVER_LETTERS_KEY, all);
+            writeJson(coverLettersKey(), all);
         }
     },
 
     delete(id: string): void {
-        writeJson(COVER_LETTERS_KEY, this.getAll().filter((c) => c.id !== id));
+        writeJson(coverLettersKey(), this.getAll().filter((c) => c.id !== id));
+    },
+
+    clear(): void {
+        if (typeof window === 'undefined') return;
+        window.localStorage.removeItem(coverLettersKey());
     },
 };

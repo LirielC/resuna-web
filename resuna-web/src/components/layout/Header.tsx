@@ -9,23 +9,21 @@ import {
   Menu,
   X,
   ChevronRight,
-  Moon,
-  Sun,
   LogOut,
   User,
   FileStack,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 export function Header() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, isAdmin, signOut } = useAuth();
   const { t } = useTranslation();
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,11 +44,6 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle("dark");
-  };
-
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -70,7 +63,7 @@ export function Header() {
       { href: "/resumes", label: t("header.archives") },
     ]
     : [
-      { href: "/features", label: t("header.features") },
+      { href: "/#features", label: t("header.features") },
       { href: "/pricing", label: t("header.pricing") },
       { href: "/blog", label: t("header.blog") },
     ];
@@ -113,16 +106,6 @@ export function Header() {
 
             {/* Right Side Actions */}
             <div className="hidden md:flex items-center gap-4">
-
-
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-                aria-label={t("header.toggleTheme")}
-              >
-                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
-
               {loading ? (
                 <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-700 animate-pulse" />
               ) : user ? (
@@ -183,6 +166,16 @@ export function Header() {
                             <User className="w-4 h-4" />
                             {t("header.account")}
                           </Link>
+                          {isAdmin && (
+                            <Link
+                              href="/admin"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-3 px-4 py-2 text-sm text-orange-700 hover:bg-orange-50 dark:hover:bg-stone-800"
+                            >
+                              <Shield className="w-4 h-4" />
+                              Admin
+                            </Link>
+                          )}
                         </div>
                         <div className="border-t border-stone-100 dark:border-stone-800 py-1">
                           <button
@@ -217,18 +210,28 @@ export function Header() {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-stone-600 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
-              aria-label="Toggle menu"
-            >
+            {/* Mobile right-side actions */}
+            <div className="md:hidden flex items-center gap-2">
+              {!user && (
+                <Link
+                  href="/login"
+                  className="text-sm font-semibold px-3 py-1.5 rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-100 dark:border-stone-600 dark:text-stone-200 dark:hover:bg-stone-800 transition-colors"
+                >
+                  {t("header.logIn")}
+                </Link>
+              )}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                aria-label="Toggle menu"
+              >
               {isMobileMenuOpen ? (
                 <X className="w-6 h-6" />
               ) : (
                 <Menu className="w-6 h-6" />
               )}
-            </button>
+              </button>
+            </div>
           </nav>
         </div>
       </motion.header>
@@ -241,7 +244,7 @@ export function Header() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-x-0 top-16 z-40 md:hidden bg-[#F8F6F1] border-b border-stone-200 dark:bg-stone-900 dark:border-stone-800 shadow-xl"
+            className="fixed inset-x-0 top-16 z-40 md:hidden bg-[#F8F6F1] border-b border-stone-200 dark:bg-stone-900 dark:border-stone-800 shadow-xl overflow-y-auto max-h-[calc(100vh-4rem)]"
           >
             <div className="container-custom py-4 space-y-4">
               {/* User info in mobile */}
@@ -277,13 +280,31 @@ export function Header() {
               ))}
 
               {user && (
-                <Link
-                  href="/resumes"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block py-2 text-base font-medium text-stone-700 hover:text-orange-600 dark:text-stone-200"
-                >
-                  {t("header.myResumes")}
-                </Link>
+                <>
+                  <Link
+                    href="/resumes"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block py-2 text-base font-medium text-stone-700 hover:text-orange-600 dark:text-stone-200"
+                  >
+                    {t("header.myResumes")}
+                  </Link>
+                  <Link
+                    href="/account"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block py-2 text-base font-medium text-stone-700 hover:text-orange-600 dark:text-stone-200"
+                  >
+                    {t("header.account")}
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="block py-2 text-base font-medium text-orange-700 hover:text-orange-800 dark:text-orange-400"
+                    >
+                      Admin
+                    </Link>
+                  )}
+                </>
               )}
 
               <hr className="border-stone-200 dark:border-stone-700" />

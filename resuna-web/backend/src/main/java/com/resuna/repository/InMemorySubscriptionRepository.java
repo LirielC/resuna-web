@@ -29,4 +29,9 @@ public class InMemorySubscriptionRepository implements SubscriptionRepository {
     public Map<String, UserSubscription> findAll() {
         return new ConcurrentHashMap<>(storage);
     }
+
+    @Override
+    public void deleteByUserId(String userId) {
+        storage.remove(userId);
+    }
 }

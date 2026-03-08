@@ -14,11 +14,8 @@ import {
   Loader2,
   AlertCircle,
   Upload,
-  FolderDown,
-  FolderUp,
   Copy,
 } from "lucide-react";
-import { useRef } from "react";
 import { Header } from "@/components/layout/Header";
 import { resumeApi, triggerDownload } from "@/lib/api";
 import { localResumeStorage } from "@/lib/storage";
@@ -26,17 +23,10 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { computeCompleteness } from "@/lib/completeness";
 import type { Resume } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-
-// Design System: Editorial Luxury
-const THEME = {
-  bg: "bg-[#F8F6F1]", // Cream Paper
-  text: "text-stone-900",
-  textMuted: "text-stone-500",
-  accent: "text-orange-600",
-  border: "border-stone-200",
-  fontDisplay: "font-display", // Playfair Display
-  fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
+import { GrainOverlay } from "@/components/ui/GrainOverlay";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Toast } from "@/components/ui/Toast";
 
 export default function ResumesPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
@@ -44,9 +34,10 @@ export default function ResumesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -66,17 +57,21 @@ export default function ResumesPage() {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.preventDefault(); // Prevent link click
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
     e.stopPropagation();
+    setPendingDeleteId(id);
+  };
 
-    if (!confirm(t("resumes.confirmDelete"))) return;
-
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
     setDeletingId(id);
     try {
       await resumeApi.delete(id);
-      setResumes(resumes.filter((r) => r.id !== id));
-    } catch (err) {
+      setResumes((prev) => prev.filter((r) => r.id !== id));
+    } catch {
       setError(t("resumes.failedToDelete"));
     } finally {
       setDeletingId(null);
@@ -113,35 +108,6 @@ export default function ResumesPage() {
     }
   };
 
-  const handleExportJson = () => {
-    const json = localResumeStorage.exportJson();
-    const blob = new Blob([json], { type: 'application/json' });
-    triggerDownload(blob, `resuna-backup-${new Date().toISOString().slice(0, 10)}.json`);
-  };
-
-  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const json = ev.target?.result as string;
-        const { imported, skipped } = localResumeStorage.importJson(json);
-        setResumes(localResumeStorage.getAll());
-        alert(
-          t('resumes.importSuccess')
-            .replace('{{count}}', String(imported))
-            .replace('{{skipped}}', String(skipped))
-        );
-      } catch {
-        setError(t('resumes.importError'));
-      }
-    };
-    reader.readAsText(file);
-    // Reset so the same file can be re-imported if needed
-    e.target.value = '';
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return t("resumes.draft");
     const date = new Date(dateString);
@@ -156,13 +122,18 @@ export default function ResumesPage() {
   return (
     <ProtectedRoute>
     <div className={`min-h-screen ${THEME.bg} ${THEME.fontBody} text-stone-900 selection:bg-orange-100 selection:text-orange-900`}>
-      {/* Texture Overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-        }}
-      />
+      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
+      {pendingDeleteId && (
+        <ConfirmDialog
+          message={t("resumes.confirmDelete")}
+          confirmLabel={t("common.delete")}
+          cancelLabel={t("common.cancel")}
+          variant="danger"
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDeleteId(null)}
+        />
+      )}
+      <GrainOverlay />
 
       <Header />
 
@@ -192,31 +163,6 @@ export default function ResumesPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-4 py-2 bg-transparent border-b border-stone-300 focus:border-orange-600 focus:outline-none transition-colors font-serif placeholder-stone-400 text-stone-800"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={handleExportJson}
-                  className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-800 border border-stone-200 hover:border-stone-400 px-3 py-1.5 rounded-sm transition-colors font-mono tracking-wide uppercase"
-                  title={t('resumes.exportJson')}
-                >
-                  <FolderDown className="w-3.5 h-3.5" />
-                  {t('resumes.exportJson')}
-                </button>
-                <button
-                  onClick={() => importInputRef.current?.click()}
-                  className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-800 border border-stone-200 hover:border-stone-400 px-3 py-1.5 rounded-sm transition-colors font-mono tracking-wide uppercase"
-                  title={t('resumes.importJson')}
-                >
-                  <FolderUp className="w-3.5 h-3.5" />
-                  {t('resumes.importJson')}
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept="application/json,.json"
-                  className="hidden"
-                  onChange={handleImportJson}
                 />
               </div>
             </div>

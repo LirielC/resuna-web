@@ -281,7 +281,17 @@
         "upgradePlan": "Fazer Upgrade",
         "recentManuscripts": "Manuscritos Recentes",
         "softwareEngineerResume": "Currículo Engenheiro de Software V",
-        "edited2DaysAgo": "Editado há 2 dias"
+        "edited2DaysAgo": "Editado há 2 dias",
+        "noResumesYet": "Nenhum currículo ainda.",
+        "untitledResume": "Currículo sem título",
+        "dangerZone": "Zona de Perigo",
+        "deleteAccount": "Excluir Minha Conta",
+        "deleteAccountDesc": "Esta ação é permanente e irreversível. Todos os seus dados serão removidos.",
+        "deleteAccountConfirm": "Tem certeza? Esta ação não pode ser desfeita.",
+        "deleteAccountConfirmBtn": "Sim, excluir minha conta",
+        "deleteAccountCancel": "Cancelar",
+        "deleteAccountDeleting": "Excluindo...",
+        "deleteAccountReauth": "Por segurança, saia e entre novamente antes de excluir sua conta."
     },
     "upload": {
         "title": "Estúdio de Análise PDF",
@@ -453,6 +463,9 @@
         "present": "Atual",
         "additionalSections": "(Seções adicionais preenchidas...)",
         "failedDownloadPdf": "Falha ao baixar PDF",
+        "failedDownloadDocx": "Falha ao baixar DOCX",
+        "justLoaded": "Carregado",
+        "justNow": "Agora",
         "yourName": "Seu Nome"
     },
     "monthPicker": {

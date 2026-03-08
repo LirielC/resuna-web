@@ -1,5 +1,6 @@
 package com.resuna.controller;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 
@@ -87,14 +88,29 @@ public class AIController {
         @Size(max = 2048)
         private String captchaToken;
 
-        public Resume getResume() { return resume; }
-        public void setResume(Resume resume) { this.resume = resume; }
+        public Resume getResume() {
+            return resume;
+        }
 
-        public String getLanguage() { return language; }
-        public void setLanguage(String language) { this.language = language; }
+        public void setResume(Resume resume) {
+            this.resume = resume;
+        }
 
-        public String getCaptchaToken() { return captchaToken; }
-        public void setCaptchaToken(String captchaToken) { this.captchaToken = captchaToken; }
+        public String getLanguage() {
+            return language;
+        }
+
+        public void setLanguage(String language) {
+            this.language = language;
+        }
+
+        public String getCaptchaToken() {
+            return captchaToken;
+        }
+
+        public void setCaptchaToken(String captchaToken) {
+            this.captchaToken = captchaToken;
+        }
     }
 
     @PostMapping("/critique")
@@ -125,7 +141,8 @@ public class AIController {
             if (!verifyCaptcha(captchaToken, ipAddress, true)) {
                 logger.warn("🚨 [SECURITY] CAPTCHA verification failed for user {} from IP {}", userId, ipAddress);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
+                        .body(Map.of("error",
+                                "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
             }
 
             Resume resume = request.getResume();
@@ -145,10 +162,14 @@ public class AIController {
                     .header("X-Credits-Remaining", String.valueOf(subscription.getCreditsRemaining()))
                     .body(response);
 
+        } catch (IOException e) {
+            logger.error("AI service unavailable for critique", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Serviço de IA temporariamente indisponível. Tente novamente em instantes."));
         } catch (Exception e) {
             logger.error("Error critiquing resume", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to critique resume"));
+                    .body(Map.of("error", "Erro ao analisar currículo. Tente novamente."));
         }
     }
 
@@ -178,7 +199,8 @@ public class AIController {
             if (!verifyCaptcha(request.getCaptchaToken(), ipAddress, true)) {
                 logger.warn("🚨 [SECURITY] CAPTCHA verification failed for /refine from IP {}", ipAddress);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
+                        .body(Map.of("error",
+                                "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
             }
 
             Resume resume = request.getResume() != null
@@ -199,9 +221,14 @@ public class AIController {
                     .header("X-Credits-Remaining", String.valueOf(subscription.getCreditsRemaining()))
                     .body(response);
 
+        } catch (IOException e) {
+            logger.error("AI service unavailable for refine", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Serviço de IA temporariamente indisponível. Tente novamente em instantes."));
         } catch (Exception e) {
             logger.error("Error refining bullets", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erro ao refinar tópicos. Tente novamente."));
         }
     }
 
@@ -230,7 +257,8 @@ public class AIController {
             if (!verifyCaptcha(request.getCaptchaToken(), ipAddress, true)) {
                 logger.warn("🚨 [SECURITY] CAPTCHA verification failed for /cover-letter from IP {}", ipAddress);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
+                        .body(Map.of("error",
+                                "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
             }
 
             Resume resume = request.getResume() != null
@@ -251,9 +279,14 @@ public class AIController {
                     .header("X-Credits-Remaining", String.valueOf(subscription.getCreditsRemaining()))
                     .body(response);
 
+        } catch (IOException e) {
+            logger.error("AI service unavailable for cover letter", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Serviço de IA temporariamente indisponível. Tente novamente em instantes."));
         } catch (Exception e) {
             logger.error("Error generating cover letter", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erro ao gerar carta de apresentação. Tente novamente."));
         }
     }
 
@@ -286,7 +319,8 @@ public class AIController {
             if (!verifyCaptcha(request.getCaptchaToken(), ipAddress, true)) {
                 logger.warn("🚨 [SECURITY] CAPTCHA verification failed for /translate from IP {}", ipAddress);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
+                        .body(Map.of("error",
+                                "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
             }
 
             Resume originalResume = request.getResume() != null
@@ -313,7 +347,8 @@ public class AIController {
             UserSubscription subscription = subscriptionService.getUserSubscription(
                     userId, userEmail, ipAddress, fingerprint);
 
-            // Return the translated resume directly so the client can save it to localStorage
+            // Return the translated resume directly so the client can save it to
+            // localStorage
             Map<String, Object> responseBody = new java.util.HashMap<>();
             responseBody.put("translatedResume", translatedResume);
             responseBody.put("targetLanguage", request.getTargetLanguage());
@@ -324,9 +359,14 @@ public class AIController {
                     .header("X-Credits-Remaining", String.valueOf(subscription.getCreditsRemaining()))
                     .body(responseBody);
 
+        } catch (IOException e) {
+            logger.error("AI service unavailable for translation", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Serviço de IA temporariamente indisponível. Tente novamente em instantes."));
         } catch (Exception e) {
             logger.error("Error translating resume", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erro ao traduzir currículo. Tente novamente."));
         }
     }
 

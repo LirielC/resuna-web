@@ -17,6 +17,9 @@ public class Resume {
     @Size(max = 200, message = "Title must not exceed 200 characters")
     private String title;
 
+    @Size(max = 10)
+    private String language; // e.g. "pt-BR", "en"
+
     @Valid
     private PersonalInfo personalInfo;
 
@@ -33,6 +36,8 @@ public class Resume {
     private List<Education> education;
 
     private List<@Size(max = 100, message = "Each skill must not exceed 100 characters") String> skills;
+
+    private List<SkillGroup> skillGroups;
 
     @Valid
     private List<Certification> certifications;
@@ -69,6 +74,14 @@ public class Resume {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
     }
 
     public PersonalInfo getPersonalInfo() {
@@ -119,6 +132,14 @@ public class Resume {
         this.skills = skills;
     }
 
+    public List<SkillGroup> getSkillGroups() {
+        return skillGroups;
+    }
+
+    public void setSkillGroups(List<SkillGroup> skillGroups) {
+        this.skillGroups = skillGroups;
+    }
+
     public List<Certification> getCertifications() {
         return certifications;
     }
@@ -152,6 +173,20 @@ public class Resume {
     }
 
     // Nested Classes
+
+    public static class SkillGroup {
+        private String category;
+        private List<String> items;
+
+        public SkillGroup() {}
+
+        public String getCategory() { return category; }
+        public void setCategory(String category) { this.category = category; }
+
+        public List<String> getItems() { return items; }
+        public void setItems(List<String> items) { this.items = items; }
+    }
+
     public static class PersonalInfo {
         @NotBlank(message = "Full name is required")
         @Size(max = 200, message = "Full name must not exceed 200 characters")
@@ -410,6 +445,9 @@ public class Resume {
         @Size(max = 200, message = "Location must not exceed 200 characters")
         private String location;
 
+        @Size(max = 20, message = "Start date must not exceed 20 characters")
+        private String startDate;
+
         @Size(max = 20, message = "Graduation date must not exceed 20 characters")
         private String graduationDate;
 
@@ -441,6 +479,14 @@ public class Resume {
 
         public void setLocation(String location) {
             this.location = location;
+        }
+
+        public String getStartDate() {
+            return startDate;
+        }
+
+        public void setStartDate(String startDate) {
+            this.startDate = startDate;
         }
 
         public String getGraduationDate() {

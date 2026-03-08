@@ -217,8 +217,8 @@ public class AdminController {
                 });
                 row.put("creditsRemaining", sub.getCreditsRemaining());
                 row.put("creditsUsed", sub.getCreditsUsed());
-                row.put("subscriptionStatus", sub.getStatus().toString());
-                row.put("subscriptionTier", sub.getTier().toString());
+                row.put("subscriptionStatus", sub.getStatus() != null ? sub.getStatus().toString() : "UNKNOWN");
+                row.put("subscriptionTier", sub.getTier() != null ? sub.getTier().toString() : "FREE");
             }
 
             return ResponseEntity.ok(new ArrayList<>(merged.values()));
@@ -241,8 +241,13 @@ public class AdminController {
             return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
         }
 
-        String sinceKey = UsageAggregateKeyHelper.sinceKey(periodType, days);
-        return ResponseEntity.ok(usageAggregateService.getAggregates(periodType, sinceKey));
+        try {
+            String sinceKey = UsageAggregateKeyHelper.sinceKey(periodType, days);
+            return ResponseEntity.ok(usageAggregateService.getAggregates(periodType, sinceKey));
+        } catch (Exception e) {
+            logger.error("Error getting usage aggregates: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", safeErrorMessage(e)));
+        }
     }
 
     /**

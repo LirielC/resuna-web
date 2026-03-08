@@ -1,6 +1,7 @@
 package com.resuna.model;
 
-import java.time.Instant;
+import com.google.cloud.Timestamp;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,7 +12,7 @@ public class UsageAggregate {
     private String userId;
     private Map<String, Long> actionCounts = new HashMap<>();
     private long totalRequests;
-    private Instant updatedAt;
+    private Timestamp updatedAt;
 
     public UsageAggregate() {}
 
@@ -33,6 +34,6 @@ public class UsageAggregate {
     public long getTotalRequests() { return totalRequests; }
     public void setTotalRequests(long totalRequests) { this.totalRequests = totalRequests; }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public Timestamp getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Timestamp updatedAt) { this.updatedAt = updatedAt; }
 }

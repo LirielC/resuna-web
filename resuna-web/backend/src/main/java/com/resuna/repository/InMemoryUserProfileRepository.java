@@ -29,4 +29,9 @@ public class InMemoryUserProfileRepository implements UserProfileRepository {
     public Map<String, UserProfile> findAll() {
         return new ConcurrentHashMap<>(storage);
     }
+
+    @Override
+    public void deleteByUserId(String userId) {
+        storage.remove(userId);
+    }
 }

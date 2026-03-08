@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resuna.util.FileValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +25,10 @@ public class ResumeImportService {
     private final ObjectMapper objectMapper;
     private final FileValidator fileValidator;
     private final PDFSecurityService pdfSecurityService;
+
+    @Autowired(required = false)
+    @Lazy
+    private GeminiService geminiService;
 
     public ResumeImportService(PDFExtractionService pdfExtractionService,
                                OpenRouterService openRouterService,
@@ -65,88 +71,103 @@ public class ResumeImportService {
 
     private String extractWithAI(String resumeText) throws IOException {
         String prompt = buildExtractionPrompt(resumeText);
-        return openRouterService.generateText(prompt);
+
+        // Prefer Gemini: better model, native JSON mode, higher output token limit
+        if (geminiService != null && geminiService.isAvailable()) {
+            try {
+                logger.info("Using Gemini for PDF import (JSON mode)");
+                return geminiService.generateJson(prompt);
+            } catch (IOException e) {
+                logger.warn("Gemini failed for PDF import, falling back to OpenRouter: {}", e.getMessage());
+            }
+        }
+
+        return openRouterService.generateJson(prompt);
     }
 
     private String buildExtractionPrompt(String resumeText) {
         String systemInstructions = """
-            Você é um especialista em análise de currículos. Extraia TODAS as informações estruturadas do currículo abaixo e retorne APENAS um objeto JSON válido, sem texto adicional.
+            Você é um especialista em extração de dados de currículos. Extraia TODAS as informações do currículo abaixo e retorne APENAS um objeto JSON válido, sem markdown, sem explicações, sem texto antes ou depois.
 
-            REGRAS IMPORTANTES:
-            1. Retorne APENAS o JSON, sem markdown, sem explicações, sem texto antes ou depois
-            2. Use null para campos não encontrados
-            3. Extraia TODAS as habilidades/competências técnicas encontradas
-            4. Extraia TODOS os projetos mencionados
-            5. Extraia TODAS as certificações/cursos
-            6. Extraia TODOS os idiomas mencionados
-            7. Para experiências, extraia título do cargo, empresa, período e descrições
-            8. Para educação, extraia grau/curso, instituição e período
+            REGRAS CRÍTICAS:
+            1. Retorne APENAS o JSON — nada mais
+            2. Use null para campos não encontrados, [] para listas vazias
+            3. PRESERVE O IDIOMA ORIGINAL — não traduza nada. Se o currículo está em português, mantenha em português
+            4. Seções em português que você deve reconhecer:
+               - "Habilidades" / "Competências" / "Tecnologias" / "Stack" → array skills
+               - "Certificações" / "Cursos" / "Certificados" / "Formações Complementares" → array certifications
+               - "Idiomas" / "Línguas" → array languages
+               - "Projetos" / "Portfólio" / "Trabalhos" → array projects
+               - "Experiência" / "Experiência Profissional" / "Histórico Profissional" → array experience
+               - "Educação" / "Formação" / "Formação Acadêmica" / "Graduação" → array education
+               - "Resumo" / "Sobre" / "Objetivo" / "Perfil" → string summary
+            5. Localização (cidade, estado, país) vai APENAS em personalInfo.location — NUNCA em skills
+            6. Extraia TODAS as habilidades listadas — não omita nenhuma tecnologia, ferramenta ou competência
+            7. Para certificações: inclua qualquer curso, certificado ou formação complementar encontrada
+            8. Para idiomas, mapeie proficiência para o nível correto:
+               - "Nativo" / "Língua materna" → "native"
+               - "Fluente" → "fluent"
+               - "Avançado" → "advanced"
+               - "Intermediário" → "intermediate"
+               - "Básico" / "Elementar" / "Iniciante" → "basic"
 
-            Formato JSON esperado:
+            Estrutura JSON esperada (use null ou [] para dados ausentes):
             {
               "personalInfo": {
-                "fullName": "Nome Completo",
-                "email": "email@exemplo.com",
-                "phone": "+55...",
+                "fullName": "nome extraído do currículo",
+                "email": "email extraído",
+                "phone": "telefone extraído",
                 "location": "Cidade, Estado",
-                "linkedin": "linkedin.com/in/...",
-                "github": "github.com/...",
-                "website": "https://..."
+                "linkedin": "url do linkedin se presente",
+                "github": "url do github se presente",
+                "website": "site pessoal se presente"
               },
-              "summary": "Resumo profissional ou objetivo",
+              "summary": "texto do resumo/objetivo profissional",
               "experience": [
                 {
-                  "title": "Cargo",
-                  "company": "Empresa",
+                  "title": "Cargo exatamente como está no currículo",
+                  "company": "Nome da empresa",
                   "location": "Cidade",
                   "startDate": "2020-01",
                   "endDate": "2023-12",
                   "current": false,
-                  "bullets": ["Responsabilidade 1", "Responsabilidade 2"]
+                  "bullets": ["Responsabilidade ou conquista 1", "Responsabilidade 2"]
                 }
               ],
               "education": [
                 {
-                  "degree": "Bacharelado em...",
-                  "institution": "Universidade",
+                  "degree": "Curso/Grau exatamente como está",
+                  "institution": "Nome da instituição",
                   "location": "Cidade",
                   "graduationDate": "2020-12",
                   "gpa": null
                 }
               ],
-              "skills": ["JavaScript", "React", "Node.js"],
+              "skills": ["JavaScript", "React", "Node.js", "Python"],
               "projects": [
                 {
-                  "name": "Nome do Projeto",
+                  "name": "Nome do projeto",
                   "description": "Descrição",
                   "technologies": ["React", "Node.js"],
                   "url": "https://...",
-                  "bullets": ["Detalhe 1", "Detalhe 2"]
+                  "bullets": ["Detalhe 1"]
                 }
               ],
               "certifications": [
                 {
-                  "name": "Nome da Certificação",
-                  "issuer": "Emissor",
+                  "name": "Nome da certificação ou curso",
+                  "issuer": "Emissor/Instituição",
                   "date": "2023-06",
                   "url": null
                 }
               ],
               "languages": [
-                {
-                  "name": "Português",
-                  "level": "native"
-                },
-                {
-                  "name": "Inglês",
-                  "level": "fluent"
-                }
+                {"name": "Português", "level": "native"},
+                {"name": "Inglês", "level": "advanced"}
               ]
             }
 
-            Níveis de idioma válidos: "native", "fluent", "advanced", "intermediate", "basic"
-
-            Retorne APENAS o JSON:""";
+            RETORNE APENAS O JSON:""";
         return pdfSecurityService.buildSecurePrompt(systemInstructions, resumeText);
     }
 
@@ -163,7 +184,7 @@ public class ResumeImportService {
             if (personalInfo != null) {
                 result.put("name", getTextValue(personalInfo, "fullName"));
                 result.put("email", getTextValue(personalInfo, "email"));
-                result.put("phone", getTextValue(personalInfo, "phone"));
+                result.put("phone", normalizePhone(getTextValue(personalInfo, "phone")));
                 result.put("location", getTextValue(personalInfo, "location"));
                 result.put("linkedin", getTextValue(personalInfo, "linkedin"));
                 result.put("github", getTextValue(personalInfo, "github"));
@@ -183,13 +204,21 @@ public class ResumeImportService {
             // Summary
             result.put("summary", getTextValue(root, "summary"));
 
-            // Skills
+            // Skills — filter out personal data that AI may have misclassified
+            String extractedEmail = (String) result.getOrDefault("email", "");
+            String extractedPhone = (String) result.getOrDefault("phone", "");
+            String extractedName = (String) result.getOrDefault("name", "");
+            String extractedLocation = (String) result.getOrDefault("location", "");
+
             List<String> skills = new ArrayList<>();
             JsonNode skillsNode = root.get("skills");
             if (skillsNode != null && skillsNode.isArray()) {
                 for (JsonNode skill : skillsNode) {
                     if (skill.isTextual()) {
-                        skills.add(skill.asText());
+                        String s = skill.asText().trim();
+                        if (!isPersonalData(s, extractedEmail, extractedPhone, extractedName, extractedLocation)) {
+                            skills.add(s);
+                        }
                     }
                 }
             }
@@ -265,6 +294,70 @@ public class ResumeImportService {
             }
         }
         return result;
+    }
+
+    /**
+     * Normalizes Brazilian phone numbers to E.164-like format with +55 prefix.
+     * Input examples: "97339-5375", "(21) 97339-5375", "021 97339-5375"
+     * Output: "+55 (21) 97339-5375" or "+55 97339-5375"
+     */
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.isBlank()) return phone;
+        String p = phone.trim();
+        // Already has country code
+        if (p.startsWith("+")) return p;
+        // Strip non-digit chars for analysis
+        String digits = p.replaceAll("[^\\d]", "");
+        if (digits.isEmpty()) return p;
+        // Remove leading 0 (old trunk prefix)
+        if (digits.startsWith("0") && digits.length() > 10) {
+            digits = digits.substring(1);
+        }
+        // Brazilian number: 10 digits (2 DDD + 8 number) or 11 digits (2 DDD + 9 number)
+        if (digits.length() == 10 || digits.length() == 11) {
+            String ddd = digits.substring(0, 2);
+            String number = digits.substring(2);
+            String formatted = number.length() == 9
+                    ? number.substring(0, 5) + "-" + number.substring(5)
+                    : number.substring(0, 4) + "-" + number.substring(4);
+            return "+55 (" + ddd + ") " + formatted;
+        }
+        // 8 or 9 digit number without DDD — just add +55
+        if (digits.length() == 8 || digits.length() == 9) {
+            return "+55 " + p;
+        }
+        return p;
+    }
+
+    /**
+     * Returns true if the given skill string looks like personal data
+     * (email, phone, URL, full name, city) rather than an actual skill.
+     */
+    private boolean isPersonalData(String s, String email, String phone, String name, String location) {
+        if (s.isBlank()) return true;
+        // Email pattern
+        if (s.contains("@")) return true;
+        // URL / social profile
+        if (s.contains("linkedin.com") || s.contains("github.com") || s.contains("://")) return true;
+        // Phone-like: contains digit sequence with dash/parens typical of phones
+        if (s.matches(".*\\d{4,}.*") && s.matches(".*[\\-().+\\s].*\\d.*")) return true;
+        // Matches extracted personal fields (case-insensitive)
+        if (!email.isBlank() && s.equalsIgnoreCase(email)) return true;
+        if (!name.isBlank() && s.equalsIgnoreCase(name)) return true;
+        // Matches part of location (city or state abbreviation)
+        if (!location.isBlank()) {
+            for (String part : location.split("[,/]")) {
+                String trimmed = part.trim();
+                if (trimmed.length() > 1 && s.equalsIgnoreCase(trimmed)) return true;
+            }
+        }
+        // Raw phone digits overlap
+        if (!phone.isBlank()) {
+            String phoneDigits = phone.replaceAll("[^\\d]", "");
+            String sDigits = s.replaceAll("[^\\d]", "");
+            if (!phoneDigits.isBlank() && sDigits.length() >= 8 && phoneDigits.contains(sDigits)) return true;
+        }
+        return false;
     }
 
     private Map<String, Object> basicExtraction(String rawText) {

@@ -9,4 +9,6 @@ public interface SubscriptionRepository {
     Optional<UserSubscription> findByUserId(String userId);
     UserSubscription save(UserSubscription subscription);
     Map<String, UserSubscription> findAll();
+
+    void deleteByUserId(String userId) throws Exception;
 }

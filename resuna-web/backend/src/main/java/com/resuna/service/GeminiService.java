@@ -53,7 +53,7 @@ public class GeminiService {
     @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.api.model:gemini-pro}")
+    @Value("${gemini.api.model:gemini-2.0-flash}")
     private String model;
 
     private static final String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
@@ -76,7 +76,7 @@ public class GeminiService {
         }
 
         String prompt = buildRefinePrompt(bullets, request);
-        String response = callGeminiAPI(prompt);
+        String response = callGeminiAPI(prompt, true, 0.7, 4096, null);
         List<RefineResponse.Refinement> refinements = parseRefineResponse(bullets, response);
 
         return new RefineResponse(refinements, 1);
@@ -86,7 +86,7 @@ public class GeminiService {
         logger.info("Generating cover letter for resume {} and job {}", resume.getId(), request.getJobTitle());
 
         String prompt = buildCoverLetterPrompt(resume, request);
-        String response = callGeminiAPI(prompt);
+        String response = callGeminiAPI(prompt, true, 0.7, 4096, null);
         String content = cleanCoverLetterResponse(response);
         int wordCount = content.split("\\s+").length;
 
@@ -97,7 +97,7 @@ public class GeminiService {
         logger.info("Translating resume {} to {}", resume.getId(), targetLanguage);
 
         String prompt = buildTranslatePrompt(resume, targetLanguage);
-        String response = callGeminiAPI(prompt);
+        String response = callGeminiAPI(prompt, true, 0.7, 4096, null);
         Resume translatedResume = parseTranslatedResume(resume, response, targetLanguage);
 
         return translatedResume;
@@ -110,8 +110,13 @@ public class GeminiService {
         logger.info("Critiquing resume {}", resume.getId());
 
         String prompt = buildCritiquePrompt(resume);
-        String response = callGeminiAPI(prompt);
+        String response = callGeminiAPI(prompt, true, 0.7, 4096, null);
         return parseCritiqueResponse(response);
+    }
+
+    /** Returns true if a Gemini API key is configured. */
+    public boolean isAvailable() {
+        return apiKey != null && !apiKey.isEmpty();
     }
 
     /**
@@ -120,23 +125,37 @@ public class GeminiService {
      */
     public String generateText(String prompt) throws IOException {
         logger.info("Generating text with custom prompt");
-        return callGeminiAPI(prompt);
+        return callGeminiAPI(prompt, true, 0.7, 4096, null);
     }
 
-    private String callGeminiAPI(String prompt) throws IOException {
+    /**
+     * Generate structured JSON using Gemini API.
+     * Skips the plain-text guardrail and uses JSON response mode for reliability.
+     */
+    public String generateJson(String prompt) throws IOException {
+        if (!isAvailable()) {
+            throw new IOException("Gemini API key não configurada");
+        }
+        logger.info("Generating JSON with Gemini (JSON mode, 8192 tokens)");
+        return callGeminiAPI(prompt, false, 0.1, 8192, "application/json");
+    }
+
+    private String callGeminiAPI(String prompt, boolean applyGuardrail,
+                                  double temperature, int maxOutputTokens,
+                                  String responseMimeType) throws IOException {
         if (apiKey == null || apiKey.isEmpty()) {
-            logger.warn("Gemini API key not configured, using mock response");
-            return generateMockResponse(applyGuardrail(prompt));
+            logger.warn("Gemini API key not configured");
+            throw new IOException("Gemini API key não configurada. Configure a variável de ambiente GEMINI_API_KEY.");
         }
 
-        String guardedPrompt = applyGuardrail(prompt);
+        String finalPrompt = applyGuardrail ? applyGuardrail(prompt) : prompt;
         String url = String.format(GEMINI_API_URL, model);
 
         Map<String, Object> requestBody = new HashMap<>();
         Map<String, Object> content = new HashMap<>();
         List<Map<String, String>> parts = new ArrayList<>();
         Map<String, String> part = new HashMap<>();
-        part.put("text", guardedPrompt);
+        part.put("text", finalPrompt);
         parts.add(part);
         content.put("parts", parts);
 
@@ -145,8 +164,11 @@ public class GeminiService {
         requestBody.put("contents", contents);
 
         Map<String, Object> generationConfig = new HashMap<>();
-        generationConfig.put("temperature", 0.7);
-        generationConfig.put("maxOutputTokens", 2048);
+        generationConfig.put("temperature", temperature);
+        generationConfig.put("maxOutputTokens", maxOutputTokens);
+        if (responseMimeType != null) {
+            generationConfig.put("responseMimeType", responseMimeType);
+        }
         requestBody.put("generationConfig", generationConfig);
 
         String jsonBody = objectMapper.writeValueAsString(requestBody);
@@ -433,7 +455,8 @@ public class GeminiService {
      * to prevent XSS if the content is rendered in a browser context.
      */
     private String stripDangerousContent(String text) {
-        if (text == null) return "";
+        if (text == null)
+            return "";
         return text
                 .replaceAll("(?is)<script.*?>.*?</script>", "")
                 .replaceAll("(?is)<iframe.*?>.*?</iframe>", "")

@@ -6,6 +6,10 @@ spring:
     name: resuna-backend
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
 
 # Firebase Configuration
 firebase:
@@ -36,6 +40,12 @@ openrouter:
   retry:
     enabled: ${OPENROUTER_RETRY_ENABLED:true}
     max-attempts: ${OPENROUTER_RETRY_MAX_ATTEMPTS:3}
+
+# Google Gemini AI Configuration (last-resort fallback)
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-2.0-flash}
 
 # Logging
 logging:

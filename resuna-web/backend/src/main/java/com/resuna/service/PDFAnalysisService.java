@@ -214,9 +214,11 @@ public class PDFAnalysisService {
 
     /**
      * Analyze a PDF resume against a job description.
+     * 
      * @param language ISO 639-1 language code (en, pt, es, etc.)
      */
-    public PDFAnalysisResponse analyze(MultipartFile pdfFile, String jobDescription, String language) throws IOException {
+    public PDFAnalysisResponse analyze(MultipartFile pdfFile, String jobDescription, String language)
+            throws IOException {
         logger.info("Starting PDF analysis in language: {}", language);
 
         // Step 1: Extract text from PDF
@@ -266,16 +268,16 @@ public class PDFAnalysisService {
 
         if (matchRatio >= 0.7) {
             // Excellent match: 85-100%
-            score = 85 + (int)((matchRatio - 0.7) / 0.3 * 15);
+            score = 85 + (int) ((matchRatio - 0.7) / 0.3 * 15);
         } else if (matchRatio >= 0.5) {
             // Good match: 70-85%
-            score = 70 + (int)((matchRatio - 0.5) / 0.2 * 15);
+            score = 70 + (int) ((matchRatio - 0.5) / 0.2 * 15);
         } else if (matchRatio >= 0.3) {
             // Fair match: 50-70%
-            score = 50 + (int)((matchRatio - 0.3) / 0.2 * 20);
+            score = 50 + (int) ((matchRatio - 0.3) / 0.2 * 20);
         } else {
             // Needs improvement: 0-50%
-            score = (int)(matchRatio / 0.3 * 50);
+            score = (int) (matchRatio / 0.3 * 50);
         }
 
         // Adjust score based on format and content quality
@@ -311,27 +313,34 @@ public class PDFAnalysisService {
     }
 
     /**
-     * Extract keywords from text using AI and pattern matching.
+     * Extract keywords from text using pattern matching first, AI as optional
+     * boost.
+     * Works 100% offline; AI only called if pattern matching finds too few
+     * keywords.
      */
     private Set<String> extractKeywords(String text) {
         Set<String> keywords = new HashSet<>();
         String lowerText = text.toLowerCase();
 
-        // Method 1: Match against known tech keywords (reliable)
+        // Method 1: Match against known tech keywords (reliable, offline)
         for (String keyword : TECH_KEYWORDS) {
             if (containsKeyword(lowerText, keyword)) {
                 keywords.add(capitalizeKeyword(keyword));
             }
         }
 
-        // Method 2: Try AI extraction for more intelligent keyword detection
-        try {
-            Set<String> aiKeywords = extractKeywordsWithAI(text);
-            keywords.addAll(aiKeywords);
-        } catch (Exception e) {
-            logger.warn("AI keyword extraction failed, using pattern matching only: {}", e.getMessage());
-            // Fallback: Extract capitalized terms but with strict filtering
-            extractPatternBasedKeywords(text, keywords);
+        // Method 2: Pattern-based extraction as second layer
+        extractPatternBasedKeywords(text, keywords);
+
+        // Method 3: Only call AI if pattern matching found very few keywords (< 5)
+        if (keywords.size() < 5) {
+            try {
+                Set<String> aiKeywords = extractKeywordsWithAI(text);
+                keywords.addAll(aiKeywords);
+                logger.info("AI boosted keywords from {} to {}", keywords.size() - aiKeywords.size(), keywords.size());
+            } catch (Exception e) {
+                logger.warn("AI keyword extraction failed, using pattern matching only: {}", e.getMessage());
+            }
         }
 
         return keywords;
@@ -346,23 +355,23 @@ public class PDFAnalysisService {
 
         String safeText = pdfSecurityService.sanitizeForAIPrompt(text, MAX_JOB_DESCRIPTION_CHARS);
         String systemInstructions = """
-                        Extract ONLY technical skills, tools, and qualifications from this job description.
-                        The text may be in English OR Portuguese - extract keywords in their original form.
+                Extract ONLY technical skills, tools, and qualifications from this job description.
+                The text may be in English OR Portuguese - extract keywords in their original form.
 
-                        RULES:
-                        - ONLY extract: programming languages, frameworks, libraries, databases, cloud services, tools, certifications, methodologies
-                        - DO NOT extract: common verbs (criar, buscar, desenvolver, looking, seeking), company names, generic terms
-                        - DO NOT extract: soft skills in generic form (comunicação, liderança) unless specifically technical
-                        - Return as comma-separated list, no explanations
-                        - If skill appears in different forms (React, ReactJS), choose the most common form
-                        - Keep technical terms in their common form (AWS, Docker, Python - not translated)
-                        - Maximum 25 keywords
+                RULES:
+                - ONLY extract: programming languages, frameworks, libraries, databases, cloud services, tools, certifications, methodologies
+                - DO NOT extract: common verbs (criar, buscar, desenvolver, looking, seeking), company names, generic terms
+                - DO NOT extract: soft skills in generic form (comunicação, liderança) unless specifically technical
+                - Return as comma-separated list, no explanations
+                - If skill appears in different forms (React, ReactJS), choose the most common form
+                - Keep technical terms in their common form (AWS, Docker, Python - not translated)
+                - Maximum 25 keywords
 
-                        Examples of GOOD keywords: Python, AWS, Docker, Kubernetes, React, PostgreSQL, Agile, CI/CD, Spring Boot, Microservices
-                        Examples of BAD keywords: Criar, Desenvolver, Buscamos, Configurar, Team, Requirements, Experience, Company, Looking, Nossos
+                Examples of GOOD keywords: Python, AWS, Docker, Kubernetes, React, PostgreSQL, Agile, CI/CD, Spring Boot, Microservices
+                Examples of BAD keywords: Criar, Desenvolver, Buscamos, Configurar, Team, Requirements, Experience, Company, Looking, Nossos
 
-                        Return ONLY the comma-separated keywords.
-                        """;
+                Return ONLY the comma-separated keywords.
+                """;
 
         String securePrompt = pdfSecurityService.buildSecurePrompt(systemInstructions, safeText);
         String response = openRouterService.generateText(securePrompt);
@@ -579,12 +588,14 @@ public class PDFAnalysisService {
 
         // Check for special characters
         if (resumeText.contains("★") || resumeText.contains("●") || resumeText.contains("◆")) {
-            issues.add("Caracteres especiais de bullet detectados. Use bullets padrão para melhor compatibilidade com ATS.");
+            issues.add(
+                    "Caracteres especiais de bullet detectados. Use bullets padrão para melhor compatibilidade com ATS.");
         }
 
         // Check for contact info
         if (!resumeText.contains("@")) {
-            issues.add("Nenhum endereço de email detectado. Certifique-se de que suas informações de contato estão visíveis.");
+            issues.add(
+                    "Nenhum endereço de email detectado. Certifique-se de que suas informações de contato estão visíveis.");
         }
 
         // Check for common sections
@@ -596,54 +607,53 @@ public class PDFAnalysisService {
             issues.add("Nenhuma seção 'Educação' ou 'Formação' encontrada.");
         }
         if (!lowerText.contains("skills")) {
-            issues.add("Nenhuma seção 'Habilidades' encontrada. Adicionar uma seção de habilidades melhora a correspondência com ATS.");
+            issues.add(
+                    "Nenhuma seção 'Habilidades' encontrada. Adicionar uma seção de habilidades melhora a correspondência com ATS.");
         }
 
         return issues;
     }
 
     /**
-     * Generate AI-powered suggestions using OpenRouter.
+     * Generate suggestions using rule-based system first, AI as optional boost.
      */
     private List<String> generateSuggestions(String resumeText, String jobDescription,
             List<String> missingKeywords, String language) {
         List<String> suggestions = new ArrayList<>();
 
+        // Step 1: Always start with rule-based suggestions (offline, reliable)
+        suggestions.addAll(getRuleBasedSuggestions(resumeText, language));
+
         // Add basic suggestions based on missing keywords
         if (!missingKeywords.isEmpty()) {
             String topMissing = missingKeywords.stream().limit(5).collect(Collectors.joining(", "));
-            String suggestion = "Considere adicionar estas palavras-chave ao seu currículo: " + topMissing;
-            suggestions.add(suggestion);
+            String suggestion = "Considere adicionar estas palavras-chave ao seu curr\u00edculo: " + topMissing;
+            suggestions.add(0, suggestion); // Put at the beginning
         }
 
-        // Try to get AI suggestions
-        try {
-            String prompt = buildSuggestionPrompt(resumeText, jobDescription, missingKeywords, language);
-            String aiResponse = openRouterService.generateText(prompt);
-
-            // Parse AI suggestions (expecting numbered list)
-            String[] lines = aiResponse.split("\n");
-            for (String line : lines) {
-                line = line.trim()
-                        .replaceAll("^\\d+[.)]\\s*", "") // Remove numbering
-                        .replaceAll("^[-*•]\\s*", ""); // Remove bullets
-
-                if (line.length() >= 20 && line.length() <= 200) {
-                    suggestions.add(line);
-                }
-
-                if (suggestions.size() >= 7)
-                    break;
-            }
-        } catch (Exception e) {
-            logger.warn("Failed to get AI suggestions: {}", e.getMessage());
-            // Fall back to rule-based suggestions
-            suggestions.addAll(getRuleBasedSuggestions(resumeText, language));
-        }
-
-        // Ensure we have at least some suggestions
+        // Step 2: Only try AI if we have fewer than 3 suggestions
         if (suggestions.size() < 3) {
-            suggestions.addAll(getRuleBasedSuggestions(resumeText, language));
+            try {
+                String prompt = buildSuggestionPrompt(resumeText, jobDescription, missingKeywords, language);
+                String aiResponse = openRouterService.generateText(prompt);
+
+                // Parse AI suggestions (expecting numbered list)
+                String[] lines = aiResponse.split("\n");
+                for (String line : lines) {
+                    line = line.trim()
+                            .replaceAll("^\\d+[.)]\\s*", "") // Remove numbering
+                            .replaceAll("^[-*\u2022]\\s*", ""); // Remove bullets
+
+                    if (line.length() >= 20 && line.length() <= 200) {
+                        suggestions.add(line);
+                    }
+
+                    if (suggestions.size() >= 7)
+                        break;
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to get AI suggestions, using rule-based only: {}", e.getMessage());
+            }
         }
 
         return suggestions.stream().distinct().limit(7).toList();
@@ -658,21 +668,22 @@ public class PDFAnalysisService {
         String safeJob = pdfSecurityService.sanitizeForAIPrompt(jobDescription, MAX_JOB_SNIPPET_CHARS);
 
         String userContent = String.format("""
-                        RESUME (first 3000 chars):
-                        %s
+                RESUME (first 3000 chars):
+                %s
 
-                        JOB DESCRIPTION (first 2000 chars):
-                        %s
+                JOB DESCRIPTION (first 2000 chars):
+                %s
 
-                        KEYWORDS NOT DIRECTLY FOUND: %s
-                        """,
+                KEYWORDS NOT DIRECTLY FOUND: %s
+                """,
                 safeResume, safeJob, missingKeywords.stream().limit(15).collect(Collectors.joining(", ")));
 
         String languageInstruction = language.equals("pt")
                 ? "IMPORTANT: Respond in PORTUGUESE (Brazilian Portuguese). All suggestions must be in Portuguese."
                 : "IMPORTANT: Respond in ENGLISH. All suggestions must be in English.";
 
-        String systemInstructions = String.format("""
+        String systemInstructions = String.format(
+                """
                         You are an expert ATS (Applicant Tracking System) analyst and career coach. Perform a DEEP SEMANTIC ANALYSIS of this resume against the job description.
 
                         %s
@@ -695,42 +706,80 @@ public class PDFAnalysisService {
                         - Directly tied to job requirements
 
                         Format: Just the numbered list, no introduction or conclusion.
-                        """, languageInstruction);
+                        """,
+                languageInstruction);
 
         return pdfSecurityService.buildSecurePrompt(systemInstructions, userContent);
     }
 
     /**
-     * Rule-based suggestions as fallback.
+     * Rule-based suggestions — works 100% offline.
      */
     private List<String> getRuleBasedSuggestions(String resumeText, String language) {
         List<String> suggestions = new ArrayList<>();
         String lowerText = resumeText.toLowerCase();
 
-        if (!lowerText.contains("summary") && !lowerText.contains("objective") && !lowerText.contains("resumo")) {
-            suggestions.add("Adicione um resumo profissional no topo do seu currículo para destacar rapidamente sua proposta de valor.");
+        if (!lowerText.contains("summary") && !lowerText.contains("objective") && !lowerText.contains("resumo")
+                && !lowerText.contains("objetivo")) {
+            suggestions.add(
+                    "Adicione um resumo profissional no topo do seu curr\u00edculo para destacar rapidamente sua proposta de valor.");
         }
 
         if (!Pattern.compile("\\d+%|\\$\\d+|R\\$\\d+").matcher(resumeText).find()) {
-            suggestions.add("Inclua conquistas quantificáveis (ex: 'aumentei as vendas em 25%', 'reduzi custos em R$ 10 mil').");
+            suggestions.add(
+                    "Inclua conquistas quantific\u00e1veis (ex: 'aumentei as vendas em 25%', 'reduzi custos em R$ 10 mil').");
         }
 
         if (!lowerText.contains("github") && !lowerText.contains("portfolio") && !lowerText.contains("linkedin")) {
-            suggestions.add("Adicione links para seu GitHub, portfólio ou perfil do LinkedIn para mostrar seu trabalho.");
+            suggestions
+                    .add("Adicione links para seu GitHub, portf\u00f3lio ou perfil do LinkedIn para mostrar seu trabalho.");
         }
 
-        String[] actionVerbs = { "desenvolvi", "implementei", "projetei", "liderei", "gerenciei" };
+        String[] actionVerbs = { "desenvolvi", "implementei", "projetei", "liderei", "gerenciei",
+                "developed", "implemented", "designed", "led", "managed" };
         int verbCount = 0;
         for (String verb : actionVerbs) {
             if (lowerText.contains(verb))
                 verbCount++;
         }
         if (verbCount < 2) {
-            suggestions.add("Use verbos de ação fortes como 'desenvolvi', 'implementei', 'liderei', 'projetei' para descrever suas conquistas.");
+            suggestions.add(
+                    "Use verbos de a\u00e7\u00e3o fortes como 'desenvolvi', 'implementei', 'liderei', 'projetei' para descrever suas conquistas.");
         }
 
-        if (!lowerText.contains("certification") && !lowerText.contains("certified") && !lowerText.contains("certificação")) {
-            suggestions.add("Considere adicionar certificações relevantes para demonstrar expertise nas principais tecnologias.");
+        if (!lowerText.contains("certification") && !lowerText.contains("certified")
+                && !lowerText.contains("certifica\u00e7\u00e3o") && !lowerText.contains("certificado")) {
+            suggestions.add(
+                    "Considere adicionar certifica\u00e7\u00f5es relevantes para demonstrar expertise nas principais tecnologias.");
+        }
+
+        // Additional rules for better standalone coverage
+        if (resumeText.length() < 800) {
+            suggestions.add(
+                    "Seu curr\u00edculo parece curto. Adicione mais detalhes sobre suas experi\u00eancias e projetos realizados.");
+        }
+
+        if (!lowerText.contains("projeto") && !lowerText.contains("project")) {
+            suggestions.add(
+                    "Adicione uma se\u00e7\u00e3o de projetos para demonstrar sua experi\u00eancia pr\u00e1tica e portf\u00f3lio de trabalho.");
+        }
+
+        int sectionCount = 0;
+        String[] sections = { "experi\u00eancia", "experience", "educa\u00e7\u00e3o", "education", "habilidades",
+                "skills",
+                "forma\u00e7\u00e3o", "projetos", "projects" };
+        for (String section : sections) {
+            if (lowerText.contains(section))
+                sectionCount++;
+        }
+        if (sectionCount < 3) {
+            suggestions.add(
+                    "Organize seu curr\u00edculo em se\u00e7\u00f5es claras: Resumo, Experi\u00eancia, Educa\u00e7\u00e3o, Habilidades e Projetos.");
+        }
+
+        if (!lowerText.contains("idioma") && !lowerText.contains("language") && !lowerText.contains("ingl\u00eas")
+                && !lowerText.contains("english")) {
+            suggestions.add("Adicione uma se\u00e7\u00e3o de idiomas com seus n\u00edveis de profici\u00eancia.");
         }
 
         return suggestions;

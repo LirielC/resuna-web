@@ -9,4 +9,6 @@ public interface UserProfileRepository {
     Optional<UserProfile> findByUserId(String userId);
     UserProfile save(UserProfile profile);
     Map<String, UserProfile> findAll();
+
+    void deleteByUserId(String userId) throws Exception;
 }

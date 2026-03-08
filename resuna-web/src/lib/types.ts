@@ -1,14 +1,21 @@
 // Resume Types
+export interface SkillGroup {
+    category: string;
+    items: string[];
+}
+
 export interface Resume {
     id?: string;
     userId?: string;
     title: string;
+    language?: 'pt-BR' | 'en'; // 'en' for translated resumes
     personalInfo: PersonalInfo;
     summary?: string;
     experience?: Experience[];
     projects?: Project[];
     education?: Education[];
     skills?: string[];
+    skillGroups?: SkillGroup[];
     certifications?: Certification[];
     languages?: Language[];
     createdAt?: string;
@@ -49,6 +56,7 @@ export interface Education {
     degree: string;
     institution: string;
     location?: string;
+    startDate?: string;
     graduationDate?: string;
     gpa?: string;
 }

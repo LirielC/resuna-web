@@ -21,16 +21,8 @@ import { Toast } from "@/components/ui/Toast";
 import { atsApi, subscriptionApi } from "@/lib/api";
 import { useTranslation } from "@/contexts/LanguageContext";
 
-// Design System: Editorial Luxury
-const THEME = {
-    bg: "bg-[#F8F6F1]", // Cream Paper
-    text: "text-stone-900",
-    textMuted: "text-stone-500",
-    accent: "text-orange-600",
-    border: "border-stone-200",
-    fontDisplay: "font-display", // Playfair Display
-    fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
+import { GrainOverlay } from "@/components/ui/GrainOverlay";
 
 // Type for the PDF analysis result
 interface PDFAnalysisResult {
@@ -107,8 +99,8 @@ export default function UploadResumePage() {
             } catch {
                 setToastMessage(t('common.creditUsed'));
             }
-        } catch (err: any) {
-            setError(err.message || t("upload.failedAnalyze"));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : t("upload.failedAnalyze"));
         } finally {
             setIsAnalyzing(false);
         }
@@ -117,13 +109,7 @@ export default function UploadResumePage() {
     return (
         <div className={`min-h-screen ${THEME.bg} ${THEME.fontBody} text-stone-900 selection:bg-orange-100 selection:text-orange-900`}>
             {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
-            {/* Texture Overlay */}
-            <div
-                className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
-                style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-                }}
-            />
+            <GrainOverlay />
 
             <Header />
 

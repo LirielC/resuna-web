@@ -33,8 +33,13 @@ public class FirestoreSubscriptionRepository implements SubscriptionRepository {
             if (!doc.exists()) {
                 return Optional.empty();
             }
-            UserSubscription subscription = doc.toObject(UserSubscription.class);
-            return Optional.ofNullable(subscription);
+            try {
+                UserSubscription subscription = doc.toObject(UserSubscription.class);
+                return Optional.ofNullable(subscription);
+            } catch (RuntimeException e) {
+                logger.error("Failed to deserialize subscription for user {}: {}", userId, e.getMessage());
+                return Optional.empty();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return Optional.empty();
@@ -64,15 +69,23 @@ public class FirestoreSubscriptionRepository implements SubscriptionRepository {
         }
     }
 
+    public void deleteByUserId(String userId) throws ExecutionException, InterruptedException {
+        firestore.collection(COLLECTION_NAME).document(userId).delete().get();
+    }
+
     @Override
     public Map<String, UserSubscription> findAll() {
         try {
             ApiFuture<QuerySnapshot> query = firestore.collection(COLLECTION_NAME).get();
             Map<String, UserSubscription> result = new LinkedHashMap<>();
             for (DocumentSnapshot doc : query.get().getDocuments()) {
-                UserSubscription subscription = doc.toObject(UserSubscription.class);
-                if (subscription != null && subscription.getUserId() != null) {
-                    result.put(subscription.getUserId(), subscription);
+                try {
+                    UserSubscription subscription = doc.toObject(UserSubscription.class);
+                    if (subscription != null && subscription.getUserId() != null) {
+                        result.put(subscription.getUserId(), subscription);
+                    }
+                } catch (RuntimeException e) {
+                    logger.error("Failed to deserialize subscription for doc {}: {}", doc.getId(), e.getMessage());
                 }
             }
             return result;

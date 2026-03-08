@@ -1,14 +1,14 @@
 package com.resuna.model;
 
-import java.time.Instant;
+import com.google.cloud.Timestamp;
 
 public class InitialCreditsCounter {
     private String key;
     private String type;
     private String day;
     private int count;
-    private Instant updatedAt;
-    private Instant expireAt;
+    private Timestamp updatedAt;
+    private Timestamp expireAt;
     private Boolean granted;
 
     public InitialCreditsCounter() {}
@@ -25,11 +25,11 @@ public class InitialCreditsCounter {
     public int getCount() { return count; }
     public void setCount(int count) { this.count = count; }
 
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public Timestamp getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(Timestamp updatedAt) { this.updatedAt = updatedAt; }
 
-    public Instant getExpireAt() { return expireAt; }
-    public void setExpireAt(Instant expireAt) { this.expireAt = expireAt; }
+    public Timestamp getExpireAt() { return expireAt; }
+    public void setExpireAt(Timestamp expireAt) { this.expireAt = expireAt; }
 
     public Boolean getGranted() { return granted; }
     public void setGranted(Boolean granted) { this.granted = granted; }

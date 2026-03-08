@@ -31,11 +31,25 @@ import {
     isValidEmail,
     isValidUrl,
     isValidPhoneBR,
+    maskPhoneBR,
     getEmailErrorMessage,
     getUrlErrorMessage,
     getPhoneErrorMessage,
     getDateRangeErrorMessage,
 } from "@/lib/validation";
+
+interface SkillGroupEntry { id: string; category: string; text: string; }
+
+const DEFAULT_SKILL_GROUPS: SkillGroupEntry[] = [
+    { id: 'linguagens', category: 'Linguagens', text: '' },
+    { id: 'frameworks', category: 'Frameworks', text: '' },
+    { id: 'cloud', category: 'Cloud', text: '' },
+    { id: 'banco-dados', category: 'Banco de Dados', text: '' },
+    { id: 'devops', category: 'DevOps', text: '' },
+    { id: 'ferramentas', category: 'Ferramentas', text: '' },
+    { id: 'metodologias', category: 'Metodologias', text: '' },
+];
+const DEFAULT_COUNT = DEFAULT_SKILL_GROUPS.length;
 
 export default function CreateResumePage() {
     const { t } = useTranslation();
@@ -63,6 +77,8 @@ export default function CreateResumePage() {
     const [techInputs, setTechInputs] = useState<string[]>([""]);
     const [skills, setSkills] = useState<string[]>([]);
     const [newSkill, setNewSkill] = useState("");
+    const [skillMode, setSkillMode] = useState<'flat' | 'grouped'>('grouped');
+    const [skillGroups, setSkillGroups] = useState<SkillGroupEntry[]>(DEFAULT_SKILL_GROUPS);
     const [certifications, setCertifications] = useState<Certification[]>([
         { name: "", issuer: "", date: "" },
     ]);
@@ -102,7 +118,7 @@ export default function CreateResumePage() {
             !!(personalInfo.phone?.trim() || personalInfo.location?.trim()),
             !!(summary?.trim() && summary.length >= 50),
             educations.some(e => e.degree?.trim() && e.institution?.trim()),
-            skills.length > 0,
+            skills.length > 0 || skillGroups.some(g => g.text.trim().length > 0),
             experiences.some(e => e.title?.trim() && e.company?.trim()),
         ];
         return Math.round((checks.filter(Boolean).length / checks.length) * 100);
@@ -192,7 +208,8 @@ export default function CreateResumePage() {
         }
         if (!educations.some(e => e.degree?.trim() && e.institution?.trim()))
             return { valid: false, error: "Adicione pelo menos uma formação acadêmica" };
-        if (skills.length === 0) return { valid: false, error: "Adicione pelo menos uma competência" };
+        const hasSkills = skillMode === 'flat' ? skills.length > 0 : skillGroups.some(g => g.text.trim().length > 0);
+        if (!hasSkills) return { valid: false, error: "Adicione pelo menos uma competência" };
         return { valid: true };
     };
 
@@ -226,8 +243,10 @@ export default function CreateResumePage() {
         if (!resumeId) return;
         setDownloadingPdf(true);
         try {
-            const blob = await resumeApi.downloadPdf(resumeId);
-            triggerDownload(blob, `curriculo.pdf`);
+            const pdfLocale = translatedResume ? 'en' : 'pt-BR';
+            const blob = await resumeApi.downloadPdf(resumeId, pdfLocale);
+            const filename = translatedResume ? 'resume-english.pdf' : 'curriculo.pdf';
+            triggerDownload(blob, filename);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Falha ao baixar PDF");
         } finally {
@@ -240,7 +259,7 @@ export default function CreateResumePage() {
         if (!resumeId) return;
         setDownloadingDocx(true);
         try {
-            const blob = await resumeApi.downloadDocx(resumeId);
+            const blob = await resumeApi.downloadDocx(resumeId, translatedResume ? 'en' : 'pt-BR');
             triggerDownload(blob, `curriculo.docx`);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Falha ao baixar DOCX");
@@ -272,7 +291,17 @@ export default function CreateResumePage() {
                 experience: experiences.filter(e => e.title || e.company),
                 projects: projects.filter(p => p.name),
                 education: educations.filter(e => e.degree || e.institution),
-                skills,
+                skills: skillMode === 'flat' ? skills
+                    : skillGroups.flatMap(g =>
+                        g.text.split(',').map(s => s.trim()).filter(Boolean)),
+                skillGroups: skillMode === 'grouped'
+                    ? skillGroups
+                        .map(g => ({
+                            category: g.category,
+                            items: g.text.split(',').map(s => s.trim()).filter(Boolean),
+                        }))
+                        .filter(g => g.category && g.items.length > 0)
+                    : undefined,
                 certifications: certifications.filter(c => c.name),
                 languages: languages.filter(l => l.name),
             };
@@ -394,7 +423,7 @@ export default function CreateResumePage() {
                                         label="Telefone"
                                         placeholder="(11) 99999-9999"
                                         value={personalInfo.phone || ""}
-                                        onChange={e => setPersonalInfo({ ...personalInfo, phone: e.target.value })}
+                                        onChange={e => setPersonalInfo({ ...personalInfo, phone: maskPhoneBR(e.target.value) })}
                                         onBlur={e => validatePhone(e.target.value)}
                                         error={validationErrors.phone}
                                     />
@@ -409,7 +438,7 @@ export default function CreateResumePage() {
                                 <div className="mt-7 pt-7 border-t border-stone-100/80 space-y-5">
                                     <p className="text-[10px] text-stone-400 font-sans uppercase tracking-[0.2em]">Presença Digital</p>
                                     <div className="flex items-center gap-3">
-                                        <Linkedin className="w-4 h-4 text-stone-300 shrink-0" />
+                                        <Linkedin className="w-4 h-4 text-stone-400 shrink-0" />
                                         <FormField
                                             placeholder="linkedin.com/in/seu-perfil"
                                             value={personalInfo.linkedin || ""}
@@ -421,7 +450,7 @@ export default function CreateResumePage() {
                                         />
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <Github className="w-4 h-4 text-stone-300 shrink-0" />
+                                        <Github className="w-4 h-4 text-stone-400 shrink-0" />
                                         <FormField
                                             placeholder="github.com/username"
                                             value={personalInfo.github || ""}
@@ -433,7 +462,7 @@ export default function CreateResumePage() {
                                         />
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <Globe className="w-4 h-4 text-stone-300 shrink-0" />
+                                        <Globe className="w-4 h-4 text-stone-400 shrink-0" />
                                         <FormField
                                             placeholder="seusite.com"
                                             value={personalInfo.website || ""}
@@ -640,6 +669,11 @@ export default function CreateResumePage() {
                                                     onChange={e => updateEducation(i, "location", e.target.value)}
                                                 />
                                                 <MonthPicker
+                                                    label="Início (opcional)"
+                                                    value={edu.startDate || ""}
+                                                    onChange={v => updateEducation(i, "startDate", v)}
+                                                />
+                                                <MonthPicker
                                                     label={t("create.education.graduationDate")}
                                                     value={edu.graduationDate || ""}
                                                     onChange={v => updateEducation(i, "graduationDate", v)}
@@ -660,43 +694,93 @@ export default function CreateResumePage() {
                             {/* ── VI: Competências ─── */}
                             <FormSection number="VI" title="Competências" tag="obrigatório" required>
                                 <div className="space-y-4">
-                                    <div className="flex gap-3">
-                                        <FormField
-                                            placeholder="React, Python, Gestão de Projetos..."
-                                            value={newSkill}
-                                            onChange={e => setNewSkill(e.target.value)}
-                                            onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addSkill())}
-                                            headless
-                                            className="flex-1"
-                                        />
+                                    {/* Mode toggle */}
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={addSkill}
-                                            className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white text-sm font-sans rounded-sm transition-colors shrink-0"
+                                            onClick={() => setSkillMode('grouped')}
+                                            className={`px-3 py-1.5 text-xs font-sans rounded-sm border transition-colors ${skillMode === 'grouped' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-300 hover:border-stone-400'}`}
                                         >
-                                            Adicionar
+                                            Por categoria
+                                        </button>
+                                        <button
+                                            onClick={() => setSkillMode('flat')}
+                                            className={`px-3 py-1.5 text-xs font-sans rounded-sm border transition-colors ${skillMode === 'flat' ? 'bg-stone-800 text-white border-stone-800' : 'bg-white text-stone-500 border-stone-300 hover:border-stone-400'}`}
+                                        >
+                                            Lista simples
                                         </button>
                                     </div>
-                                    <div className="min-h-[80px] flex flex-wrap gap-2 p-4 bg-white/50 rounded-sm border border-stone-200/70">
-                                        {skills.length === 0 && (
-                                            <p className="text-xs text-stone-300 italic font-sans self-center w-full text-center">
-                                                Nenhuma competência adicionada
+
+                                    {skillMode === 'grouped' ? (
+                                        <div className="space-y-3">
+                                            <p className="text-xs text-stone-400 font-sans">
+                                                Preencha apenas as categorias que se aplicam. Separe com vírgulas.
                                             </p>
-                                        )}
-                                        {skills.map(skill => (
-                                            <span
-                                                key={skill}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-sm rounded-full shadow-sm font-sans"
+                                            {skillGroups.map((group, gi) => (
+                                                <div key={group.id} className="grid sm:grid-cols-[140px_1fr_auto] gap-3 items-center">
+                                                    <input
+                                                        type="text"
+                                                        value={group.category}
+                                                        onChange={e => setSkillGroups(p => p.map(g => g.id === group.id ? { ...g, category: e.target.value } : g))}
+                                                        placeholder="Categoria"
+                                                        className="text-sm font-sans font-semibold text-stone-700 bg-transparent border-b border-stone-300 focus:border-orange-500 focus:outline-none py-1.5 w-full"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={group.text}
+                                                        onChange={e => setSkillGroups(p => p.map(g => g.id === group.id ? { ...g, text: e.target.value } : g))}
+                                                        placeholder={`${group.category || 'itens'} (opcional, separados por vírgula)`}
+                                                        className="text-sm font-sans text-stone-600 bg-transparent border-b border-stone-200 focus:border-orange-400 focus:outline-none py-1.5 w-full placeholder:text-stone-300"
+                                                    />
+                                                    {gi >= DEFAULT_COUNT && (
+                                                        <button
+                                                            onClick={() => setSkillGroups(p => p.filter(g => g.id !== group.id))}
+                                                            className="text-stone-300 hover:text-red-400 transition-colors px-1"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button
+                                                onClick={() => setSkillGroups(p => [...p, { id: `custom-${Date.now()}`, category: '', text: '' }])}
+                                                className="text-xs text-stone-400 hover:text-orange-600 font-sans transition-colors flex items-center gap-1 mt-1"
                                             >
-                                                {skill}
+                                                + Adicionar categoria
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex gap-3">
+                                                <FormField
+                                                    placeholder="React, Python, Gestão de Projetos..."
+                                                    value={newSkill}
+                                                    onChange={e => setNewSkill(e.target.value)}
+                                                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addSkill())}
+                                                    headless
+                                                    className="flex-1"
+                                                />
                                                 <button
-                                                    onClick={() => removeSkill(skill)}
-                                                    className="text-stone-300 hover:text-red-400 transition-colors text-base leading-none"
+                                                    onClick={addSkill}
+                                                    className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-white text-sm font-sans rounded-sm transition-colors shrink-0"
                                                 >
-                                                    ×
+                                                    Adicionar
                                                 </button>
-                                            </span>
-                                        ))}
-                                    </div>
+                                            </div>
+                                            <div className="min-h-[80px] flex flex-wrap gap-2 p-4 bg-white/80 rounded-sm border border-stone-300/70">
+                                                {skills.length === 0 && (
+                                                    <p className="text-xs text-stone-400 italic font-sans self-center w-full text-center">
+                                                        Nenhuma competência adicionada
+                                                    </p>
+                                                )}
+                                                {skills.map(skill => (
+                                                    <span key={skill} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-sm rounded-full shadow-sm font-sans">
+                                                        {skill}
+                                                        <button onClick={() => removeSkill(skill)} className="text-stone-300 hover:text-red-400 transition-colors text-base leading-none">×</button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </FormSection>
 
@@ -772,7 +856,7 @@ export default function CreateResumePage() {
                                                     <select
                                                         value={lang.level}
                                                         onChange={e => updateLanguage(i, "level", e.target.value)}
-                                                        className="w-full py-2.5 bg-transparent border-b border-stone-200 hover:border-stone-300 text-stone-800 font-serif text-base focus:outline-none focus:border-orange-500 transition-colors"
+                                                        className="w-full py-2.5 bg-transparent border-b border-stone-300 hover:border-stone-400 text-stone-800 font-serif text-base focus:outline-none focus:border-orange-500 transition-colors"
                                                     >
                                                         <option value="basic">Básico</option>
                                                         <option value="intermediate">Intermediário</option>
@@ -790,7 +874,7 @@ export default function CreateResumePage() {
 
                             {/* Translation option */}
                             <div className="py-10 border-t border-stone-200/60">
-                                <div className="flex items-start gap-4 p-5 bg-white/40 rounded-sm border border-stone-200/50">
+                                <div className="flex items-start gap-4 p-5 bg-white/70 rounded-sm border border-stone-200/80">
                                     <Sparkles className="w-5 h-5 text-orange-400 mt-0.5 shrink-0" />
                                     <div className="flex-1">
                                         <h4 className="font-display text-base font-semibold text-stone-800 mb-1">
@@ -891,23 +975,43 @@ export default function CreateResumePage() {
                                             </div>
                                         </div>
 
-                                        <button
-                                            onClick={handleDownloadPdf}
-                                            disabled={downloadingPdf}
-                                            className="w-full py-4 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-sm transition-all duration-200 flex items-center justify-center gap-3 tracking-wide shadow-lg shadow-stone-900/10"
-                                        >
-                                            {downloadingPdf ? (
-                                                <>
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                                    Gerando PDF...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Download className="w-5 h-5" />
-                                                    Baixar PDF
-                                                </>
-                                            )}
-                                        </button>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={handleDownloadPdf}
+                                                disabled={downloadingPdf}
+                                                className="flex-1 py-4 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-sm transition-all duration-200 flex items-center justify-center gap-3 tracking-wide shadow-lg shadow-stone-900/10"
+                                            >
+                                                {downloadingPdf ? (
+                                                    <>
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                        Gerando PDF...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Download className="w-5 h-5" />
+                                                        Baixar PDF
+                                                    </>
+                                                )}
+                                            </button>
+
+                                            <button
+                                                onClick={handleDownloadDocx}
+                                                disabled={downloadingDocx}
+                                                className="flex-1 py-4 bg-stone-700 hover:bg-stone-600 disabled:bg-stone-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-sm transition-all duration-200 flex items-center justify-center gap-3 tracking-wide shadow-lg shadow-stone-900/10"
+                                            >
+                                                {downloadingDocx ? (
+                                                    <>
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                        Gerando DOCX...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <FileDown className="w-5 h-5" />
+                                                        Baixar DOCX
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
 
                                         <Link
                                             href={`/resumes/${translatedResume?.id || createdResume?.id}`}
@@ -936,6 +1040,14 @@ export default function CreateResumePage() {
                                 projects={projects}
                                 educations={educations}
                                 skills={skills}
+                                skillGroups={skillMode === 'grouped'
+                                    ? skillGroups
+                                        .map(g => ({
+                                            category: g.category,
+                                            items: g.text.split(',').map(s => s.trim()).filter(Boolean),
+                                        }))
+                                        .filter(g => g.category && g.items.length > 0)
+                                    : []}
                                 certifications={certifications}
                                 languages={languages}
                             />
@@ -994,14 +1106,14 @@ function FormField({
     return (
         <div className={`space-y-2 ${className || ""}`}>
             {!headless && label && (
-                <label className="block text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-stone-400">
+                <label className="block text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-stone-500">
                     {label}{props.required && <span className="text-orange-400 ml-0.5">*</span>}
                 </label>
             )}
             <input
-                className={`w-full py-2.5 bg-transparent border-b transition-colors font-serif text-base placeholder-stone-300 text-stone-800 focus:outline-none ${error
+                className={`w-full py-2.5 bg-transparent border-b transition-colors font-serif text-base placeholder-stone-400 text-stone-800 focus:outline-none ${error
                     ? "border-red-300 focus:border-red-500"
-                    : "border-stone-200 hover:border-stone-300 focus:border-orange-500"
+                    : "border-stone-300 hover:border-stone-400 focus:border-orange-500"
                     }`}
                 {...props}
             />
@@ -1016,12 +1128,12 @@ function FormTextarea({
     return (
         <div className="space-y-2">
             {label && (
-                <label className="block text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-stone-400">
+                <label className="block text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-stone-500">
                     {label}
                 </label>
             )}
             <textarea
-                className="w-full p-4 bg-white/50 border border-stone-200 rounded-sm focus:border-orange-400 focus:bg-white/80 focus:outline-none transition-all font-serif text-base leading-relaxed text-stone-800 placeholder-stone-300 resize-none"
+                className="w-full p-4 bg-white/80 border border-stone-300 rounded-sm focus:border-orange-400 focus:bg-white focus:outline-none transition-all font-serif text-base leading-relaxed text-stone-800 placeholder-stone-400 resize-none"
                 {...props}
             />
         </div>
@@ -1038,17 +1150,17 @@ function BulletEditor({
     const cleanup = () => { const c = bullets.filter(b => b.trim()); onChange(c.length ? c : [""]); };
     return (
         <div className="space-y-3">
-            <label className="block text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-stone-400">{label}</label>
+            <label className="block text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-stone-500">{label}</label>
             {bullets.map((bullet, i) => (
                 <div key={i} className="flex items-center gap-2.5">
-                    <span className="text-orange-300 text-lg leading-none shrink-0">·</span>
+                    <span className="text-orange-400 text-lg leading-none shrink-0">·</span>
                     <input
                         type="text"
                         value={bullet}
                         onChange={e => update(i, e.target.value)}
                         onBlur={cleanup}
                         placeholder={placeholder || "Descreva uma conquista..."}
-                        className="flex-1 py-2 px-3 bg-white/40 border border-stone-200 rounded-sm focus:border-orange-400 focus:bg-white focus:outline-none transition-all font-serif text-sm text-stone-700 placeholder-stone-300"
+                        className="flex-1 py-2 px-3 bg-white/80 border border-stone-300 rounded-sm focus:border-orange-400 focus:bg-white focus:outline-none transition-all font-serif text-sm text-stone-700 placeholder-stone-400"
                     />
                     {bullets.length > 1 && (
                         <button type="button" onClick={() => remove(i)} className="p-1 text-stone-300 hover:text-red-400 transition-colors shrink-0">
@@ -1093,11 +1205,12 @@ interface A4PreviewProps {
     projects: Project[];
     educations: Education[];
     skills: string[];
+    skillGroups: { category: string; items: string[] }[];
     certifications: Certification[];
     languages: Language[];
 }
 
-function A4Preview({ personalInfo, summary, experiences, projects, educations, skills, certifications, languages }: A4PreviewProps) {
+function A4Preview({ personalInfo, summary, experiences, projects, educations, skills, skillGroups, certifications, languages }: A4PreviewProps) {
     const levelLabel: Record<string, string> = {
         native: "Nativo", fluent: "Fluente", advanced: "Avançado", intermediate: "Intermediário", basic: "Básico",
     };
@@ -1222,11 +1335,22 @@ function A4Preview({ personalInfo, summary, experiences, projects, educations, s
                         )}
 
                         {/* Skills */}
-                        {skills.length > 0 && (
+                        {(skills.length > 0 || skillGroups.some(g => g.category && g.items.length > 0)) && (
                             <PreviewSection title="Competências">
-                                <p className="text-[1.1em] text-stone-700 font-serif leading-[1.9]">
-                                    {skills.join(" · ")}
-                                </p>
+                                {skillGroups.some(g => g.category && g.items.length > 0) ? (
+                                    <div className="space-y-[0.5em]">
+                                        {skillGroups.filter(g => g.category && g.items.length > 0).map((g, i) => (
+                                            <div key={i} className="flex gap-[1em] text-[1.1em] font-serif">
+                                                <span className="font-bold text-stone-800 shrink-0 min-w-[8em]">{g.category}</span>
+                                                <span className="text-stone-600">{g.items.join(", ")}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[1.1em] text-stone-700 font-serif leading-[1.9]">
+                                        {skills.join(" · ")}
+                                    </p>
+                                )}
                             </PreviewSection>
                         )}
 

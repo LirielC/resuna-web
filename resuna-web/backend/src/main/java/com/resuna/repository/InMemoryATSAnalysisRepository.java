@@ -66,4 +66,9 @@ public class InMemoryATSAnalysisRepository implements ATSAnalysisRepository {
         }
         storage.remove(id);
     }
+
+    @Override
+    public void deleteAllByUserId(String userId) {
+        storage.values().removeIf(a -> a.getUserId().equals(userId));
+    }
 }

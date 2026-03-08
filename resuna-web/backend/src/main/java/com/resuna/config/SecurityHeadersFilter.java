@@ -21,6 +21,10 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         response.setHeader("Referrer-Policy", "same-origin");
         response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
         response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+        response.setHeader("X-Powered-By", "");
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("Expires", "0");
         if (request.isSecure()) {
             response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
         }

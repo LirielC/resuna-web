@@ -8,7 +8,9 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +53,10 @@ public class OpenRouterService {
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
+
+    @Autowired(required = false)
+    @Lazy
+    private GeminiService geminiService;
 
     @Value("${openrouter.api.key:}")
     private String apiKey;
@@ -157,63 +163,100 @@ public class OpenRouterService {
         return callOpenRouterAPI(prompt);
     }
 
+    /**
+     * Generate structured JSON using OpenRouter API.
+     * Skips the "plain text only" guardrail so the model can output valid JSON.
+     */
+    public String generateJson(String prompt) throws IOException {
+        logger.info("Generating JSON with custom prompt");
+        return callOpenRouterAPIRaw(prompt);
+    }
+
+    /** Calls the API without the plain-text guardrail. Use for JSON-structured outputs. */
+    private String callOpenRouterAPIRaw(String prompt) throws IOException {
+        return callOpenRouterAPIInternal(prompt, 0.1, 8192);
+    }
+
     private String callOpenRouterAPI(String prompt) throws IOException {
-        if (apiKey == null || apiKey.isEmpty()) {
-            logger.error("CRITICAL: OpenRouter API key not configured");
-            throw new IOException("OpenRouter API key não configurada. Configure a variável de ambiente OPENROUTER_API_KEY com sua chave da OpenRouter (https://openrouter.ai/keys)");
-        }
+        return callOpenRouterAPIInternal(applyGuardrail(prompt), 0.7, 4096);
+    }
 
-        String guardedPrompt = applyGuardrail(prompt);
-
-        // Try primary model first
-        List<String> modelsToTry = new ArrayList<>();
-        modelsToTry.add(primaryModel);
-
-        // Add fallback models if retry is enabled
-        if (retryEnabled && fallbackModels != null) {
-            modelsToTry.addAll(fallbackModels);
-        }
-
+    private String callOpenRouterAPIInternal(String finalPrompt, double temperature, int maxTokens) throws IOException {
         IOException lastException = null;
 
-        // Try each model in sequence
-        for (int i = 0; i < modelsToTry.size() && i < maxRetryAttempts; i++) {
-            String currentModel = modelsToTry.get(i);
+        // Try OpenRouter models if API key is configured
+        if (apiKey != null && !apiKey.isEmpty()) {
+            // Try primary model first
+            List<String> modelsToTry = new ArrayList<>();
+            modelsToTry.add(primaryModel);
 
-            try {
-                logger.info("Attempting request with model: {} (attempt {}/{})",
-                        currentModel, i + 1, Math.min(modelsToTry.size(), maxRetryAttempts));
+            // Add fallback models if retry is enabled
+            if (retryEnabled && fallbackModels != null) {
+                modelsToTry.addAll(fallbackModels);
+            }
 
-                String result = makeOpenRouterRequest(guardedPrompt, currentModel);
+            // Try each model in sequence
+            for (int i = 0; i < modelsToTry.size() && i < maxRetryAttempts; i++) {
+                String currentModel = modelsToTry.get(i);
 
-                if (i > 0) {
-                    logger.warn("✓ Fallback successful! Used model: {} after primary failed", currentModel);
-                }
+                try {
+                    logger.info("Attempting request with model: {} (attempt {}/{})",
+                            currentModel, i + 1, Math.min(modelsToTry.size(), maxRetryAttempts));
 
-                return result;
+                    String result = makeOpenRouterRequest(finalPrompt, currentModel, temperature, maxTokens);
 
-            } catch (IOException e) {
-                logger.warn("Request failed with model {}: {}", currentModel, e.getMessage());
-                lastException = e;
+                    if (i > 0) {
+                        logger.warn("✓ Fallback successful! Used model: {} after primary failed", currentModel);
+                    }
 
-                // If this is not the last attempt, wait before retrying
-                if (i < modelsToTry.size() - 1 && i < maxRetryAttempts - 1) {
-                    try {
-                        Thread.sleep(1000 * (i + 1)); // Exponential backoff: 1s, 2s, 3s...
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
+                    return result;
+
+                } catch (IOException e) {
+                    logger.warn("Request failed with model {}: {}", currentModel, e.getMessage());
+                    lastException = e;
+
+                    // If this is not the last attempt, wait before retrying
+                    if (i < modelsToTry.size() - 1 && i < maxRetryAttempts - 1) {
+                        try {
+                            Thread.sleep(1000 * (i + 1)); // Exponential backoff: 1s, 2s, 3s...
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                     }
                 }
             }
+
+            logger.error("❌ All OpenRouter models failed after {} attempts", Math.min(modelsToTry.size(), maxRetryAttempts));
+        } else {
+            logger.warn("OpenRouter API key not configured, skipping OpenRouter");
         }
 
-        // All models failed
-        logger.error("❌ All models failed after {} attempts", Math.min(modelsToTry.size(), maxRetryAttempts));
-        throw lastException != null ? lastException : new IOException("All OpenRouter models failed");
+        // Last resort: try Gemini as ultimate fallback
+        if (geminiService != null) {
+            try {
+                logger.info("🔄 Attempting Gemini as last-resort fallback...");
+                String result = geminiService.generateText(finalPrompt);
+                if (result != null && !result.isBlank()) {
+                    logger.warn("✓ Gemini fallback successful after all OpenRouter models failed");
+                    return result;
+                }
+            } catch (IOException e) {
+                logger.error("❌ Gemini fallback also failed: {}", e.getMessage());
+                // Keep the original OpenRouter exception as primary if it exists
+                if (lastException == null) {
+                    lastException = e;
+                }
+            }
+        } else {
+            logger.warn("Gemini fallback not available (API key not configured)");
+        }
+
+        throw lastException != null ? lastException
+                : new IOException("Nenhum serviço de IA disponível. Configure OPENROUTER_API_KEY ou GEMINI_API_KEY.");
     }
 
-    private String makeOpenRouterRequest(String prompt, String model) throws IOException {
+    private String makeOpenRouterRequest(String prompt, String model, double temperature, int maxTokens) throws IOException {
         // Build OpenRouter request body (OpenAI-compatible format)
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
@@ -225,8 +268,8 @@ public class OpenRouterService {
         messages.add(message);
 
         requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.7);
-        requestBody.put("max_tokens", 2048);
+        requestBody.put("temperature", temperature);
+        requestBody.put("max_tokens", maxTokens);
 
         String jsonBody = objectMapper.writeValueAsString(requestBody);
 
@@ -245,7 +288,12 @@ public class OpenRouterService {
         try (Response response = httpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 String errorBody = response.body() != null ? response.body().string() : "No error details";
-                throw new IOException("OpenRouter API call failed: " + response.code() + " " + response.message()
+                int code = response.code();
+                if (code == 429) {
+                    logger.warn("⚠️ Rate limited by OpenRouter (429) on model {}: {}", model, errorBody);
+                    throw new IOException("OpenRouter rate limit exceeded (429) for model " + model);
+                }
+                throw new IOException("OpenRouter API call failed: " + code + " " + response.message()
                         + " - " + errorBody);
             }
 
@@ -274,8 +322,18 @@ public class OpenRouterService {
         }
 
         String content = extractMessageContent(message);
+        Object finishReason = choice.get("finish_reason");
+
+        // Some thinking models (e.g. lfm-2.5-1.2b-thinking) put all output in "reasoning" and leave "content" empty
         if (content == null || content.isBlank()) {
-            Object finishReason = choice.get("finish_reason");
+            Object reasoning = message.get("reasoning");
+            if (reasoning instanceof String reasoningText && !reasoningText.isBlank()) {
+                logger.warn("Content was empty but reasoning field has {} chars — using reasoning as content", reasoningText.length());
+                content = reasoningText;
+            }
+        }
+
+        if (content == null || content.isBlank()) {
             Object nativeFinishReason = choice.get("native_finish_reason");
             Object reasoning = message.get("reasoning");
             int reasoningChars = (reasoning instanceof String) ? ((String) reasoning).length() : 0;
@@ -283,6 +341,11 @@ public class OpenRouterService {
             throw new IOException(String.format(
                     "No content in OpenRouter response (finish_reason=%s, native_finish_reason=%s, reasoning_chars=%d)",
                     finishReason, nativeFinishReason, reasoningChars));
+        }
+
+        // Warn if response was truncated due to token limit
+        if ("length".equals(String.valueOf(finishReason))) {
+            logger.warn("⚠️ OpenRouter response was truncated (finish_reason=length). Consider increasing max_tokens.");
         }
 
         return content;

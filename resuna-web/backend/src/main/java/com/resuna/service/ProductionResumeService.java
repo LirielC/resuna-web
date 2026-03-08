@@ -85,10 +85,23 @@ public class ProductionResumeService implements ResumeService {
     @Override
     public void deleteResume(String id, String userId) throws ExecutionException, InterruptedException {
         logger.debug("Deleting resume {} for user {}", id, userId);
-        
+
         // Verify exists
         getResumeById(id, userId);
-        
+
         resumeRepository.deleteById(id);
+    }
+
+    @Override
+    public void deleteAllByUserId(String userId) throws ExecutionException, InterruptedException {
+        logger.info("Deleting all resumes for user {}", userId);
+        List<Resume> resumes = resumeRepository.findAllByUserId(userId);
+        resumeRepository.deleteAllByIds(
+            resumes.stream()
+                .filter(r -> r != null && r.getId() != null)
+                .map(Resume::getId)
+                .toList()
+        );
+        logger.info("Deleted {} resumes for user {}", resumes.size(), userId);
     }
 }

@@ -7,18 +7,8 @@ import { motion } from "framer-motion";
 import { Loader2, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/LanguageContext";
-
-// Design System: Editorial Luxury
-const THEME = {
-  bg: "bg-[#F8F6F1]", // Cream Paper
-  card: "bg-white",
-  text: "text-stone-900",
-  textMuted: "text-stone-500",
-  accent: "text-orange-600",
-  border: "border-stone-200",
-  fontDisplay: "font-display", // Playfair Display
-  fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
+import { GrainOverlay } from "@/components/ui/GrainOverlay";
 
 export default function LoginPage() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -38,7 +28,9 @@ export default function LoginPage() {
       if (!apiKey || !authDomain || !projectId) {
         setConfigError(true);
         setError("Configuração do Firebase incompleta. Entre em contato com o administrador.");
-        console.error("Firebase configuration is incomplete. Check your .env.local file.");
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Firebase configuration is incomplete. Check your .env.local file.");
+        }
       }
     }
   }, []);
@@ -56,12 +48,13 @@ export default function LoginPage() {
     try {
       await signInWithGoogle();
       // Popup resolved — onAuthStateChanged will fire and useEffect will redirect
-    } catch (err: any) {
-      // Show full error code for diagnostics
-      const code = err?.code || 'unknown';
-      const message = err?.message || 'Erro desconhecido';
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? 'unknown';
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
       setError(`[${code}] ${message}`);
-      console.error('Login error:', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Login error:', err);
+      }
       setIsSigningIn(false);
     }
   };
@@ -79,13 +72,7 @@ export default function LoginPage() {
 
   return (
     <div className={`min-h-screen ${THEME.bg} flex items-center justify-center p-4 relative overflow-hidden`}>
-      {/* Texture Overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-        }}
-      />
+      <GrainOverlay />
 
       {/* Decorative Background Element (Abstract) */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[800px] md:h-[800px] border border-orange-100/50 rounded-full opacity-50 z-0 pointer-events-none animate-spin-slow-reverse" />

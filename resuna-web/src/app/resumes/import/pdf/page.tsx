@@ -7,20 +7,10 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Upload, FileText, Loader2, CheckCircle, XCircle, Briefcase, GraduationCap, Wrench, Award } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { resumeApi } from "@/lib/api";
-import { Resume } from "@/lib/types";
+import { Resume, Experience, Education, Project, Certification, Language } from "@/lib/types";
 import { useTranslation } from "@/contexts/LanguageContext";
-
-// Design System: Editorial Luxury
-const THEME = {
-  bg: "bg-[#F8F6F1]", // Cream Paper
-  text: "text-stone-900",
-  textMuted: "text-stone-500",
-  accent: "text-orange-600",
-  border: "border-stone-200",
-  cardBg: "bg-white",
-  fontDisplay: "font-display", // Playfair Display
-  fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
+import { GrainOverlay } from "@/components/ui/GrainOverlay";
 
 interface ExtractedData {
   name: string;
@@ -31,13 +21,13 @@ interface ExtractedData {
   github?: string;
   website?: string;
   summary?: string;
-  experience?: any;
-  education?: any;
-  projects?: any;
-  certifications?: any;
-  awards?: any;
-  languages?: any;
-  skills?: any;
+  experience?: Experience[];
+  education?: Education[];
+  projects?: Project[];
+  certifications?: Certification[];
+  awards?: string[];
+  languages?: Language[];
+  skills?: string[];
   rawText?: string;
 }
 
@@ -75,9 +65,11 @@ export default function ImportPdfPage() {
     try {
       const data = await resumeApi.importFromPdf(file);
       setExtractedData(data);
-    } catch (err: any) {
-      setError(err.message || "Erro ao processar o PDF");
-      console.error("PDF import error:", err);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao processar o PDF");
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("PDF import error:", err);
+      }
     } finally {
       setUploading(false);
     }
@@ -109,7 +101,7 @@ export default function ImportPdfPage() {
         summary: extractedData.summary?.trim() || undefined,
         experience: extractedData.experience || [],
         education: extractedData.education || [],
-        skills: (extractedData.skills || []).filter((s: any) => s?.trim().length > 0),
+        skills: (extractedData.skills || []).filter((s: string) => s?.trim().length > 0),
         certifications: extractedData.certifications || [],
         languages: extractedData.languages || [],
         projects: extractedData.projects || [],
@@ -117,9 +109,11 @@ export default function ImportPdfPage() {
 
       const created = await resumeApi.create(resume);
       router.push(`/resumes/${created.id}`);
-    } catch (err: any) {
-      setError(err.message || "Erro ao criar currículo");
-      console.error("Resume creation error:", err);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao criar currículo");
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Resume creation error:", err);
+      }
     } finally {
       setCreating(false);
     }
@@ -127,13 +121,7 @@ export default function ImportPdfPage() {
 
   return (
     <div className={`min-h-screen ${THEME.bg} ${THEME.fontBody} ${THEME.text} selection:bg-orange-100 selection:text-orange-900`}>
-      {/* Texture Overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`
-        }}
-      />
+      <GrainOverlay />
 
       <Header />
 
@@ -327,7 +315,7 @@ export default function ImportPdfPage() {
                           Experiência Profissional ({extractedData.experience.length})
                         </label>
                         <div className="relative space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[1px] before:bg-stone-200">
-                          {extractedData.experience.map((exp: any, index: number) => (
+                          {extractedData.experience.map((exp: Experience, index: number) => (
                             <div key={index} className="relative pl-10">
                               <div className="absolute left-[14px] top-1.5 w-[11px] h-[11px] rounded-full border-2 border-orange-500 bg-white z-10" />
                               <p className="font-bold text-stone-900 text-lg leading-tight">{exp.title}</p>
@@ -360,7 +348,7 @@ export default function ImportPdfPage() {
                           Educação ({extractedData.education.length})
                         </label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {extractedData.education.map((edu: any, index: number) => (
+                          {extractedData.education.map((edu: Education, index: number) => (
                             <div key={index} className="p-4 rounded-lg bg-stone-50 border border-stone-100 transition-all hover:bg-white hover:shadow-soft">
                               <p className="font-bold text-stone-900">{edu.degree}</p>
                               <p className="text-sm text-stone-500">{edu.institution}</p>
@@ -380,7 +368,7 @@ export default function ImportPdfPage() {
                           Habilidades ({extractedData.skills.length})
                         </label>
                         <div className="flex flex-wrap gap-2">
-                          {extractedData.skills.map((skill: any, index: number) => (
+                          {extractedData.skills.map((skill: string, index: number) => (
                             <span
                               key={index}
                               className="px-4 py-1.5 bg-white border border-stone-200 text-stone-700 rounded-full text-xs font-medium tracking-wide transition-all hover:border-orange-200 hover:text-orange-600"
@@ -399,7 +387,7 @@ export default function ImportPdfPage() {
                           Certificações ({extractedData.certifications.length})
                         </label>
                         <div className="flex flex-wrap gap-3">
-                          {extractedData.certifications.map((cert: any, index: number) => (
+                          {extractedData.certifications.map((cert: Certification, index: number) => (
                             <div key={index} className="flex flex-col">
                               <p className="font-bold text-stone-900 text-sm">{cert.name}</p>
                               <p className="text-xs text-stone-500 uppercase tracking-tighter opacity-70">{cert.issuer}</p>

@@ -20,4 +20,6 @@ public interface ResumeService {
     Resume updateResume(String id, Resume resume, String userId) throws ExecutionException, InterruptedException;
     
     void deleteResume(String id, String userId) throws ExecutionException, InterruptedException;
+
+    void deleteAllByUserId(String userId) throws ExecutionException, InterruptedException;
 }

@@ -1,16 +1,21 @@
 package com.resuna.service;
 
+import com.google.cloud.Timestamp;
 import com.resuna.model.InitialCreditsCounter;
 import com.resuna.model.UserSubscription;
 import com.resuna.repository.InitialCreditsCounterRepository;
 import com.resuna.repository.SubscriptionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -21,7 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Service
 public class SubscriptionService {
-    
+
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionService.class);
+
     private final Map<String, UserSubscription> subscriptionsCache = new ConcurrentHashMap<>();
     private final Set<String> initialCreditAccounts = ConcurrentHashMap.newKeySet();
     private final Map<String, Boolean> initialCreditAccountGrants = new ConcurrentHashMap<>();
@@ -55,12 +62,16 @@ public class SubscriptionService {
     }
 
     public UserSubscription getUserSubscription(String userId) {
-        return subscriptionsCache.computeIfAbsent(userId, this::loadOrCreateSubscription);
+        UserSubscription subscription = subscriptionsCache.computeIfAbsent(userId, this::loadOrCreateSubscription);
+        resetCreditsIfNeeded(userId, subscription);
+        return subscription;
     }
 
     public UserSubscription getUserSubscription(String userId, String userEmail, String ipAddress, String fingerprint) {
-        return subscriptionsCache.computeIfAbsent(userId,
+        UserSubscription subscription = subscriptionsCache.computeIfAbsent(userId,
                 id -> loadOrCreateSubscription(id, userEmail, ipAddress, fingerprint));
+        resetCreditsIfNeeded(userId, subscription);
+        return subscription;
     }
     
     public boolean hasPremiumAccess(String userId) {
@@ -195,10 +206,12 @@ public class SubscriptionService {
         return subscription;
     }
 
+    private static final ZoneId BRAZIL_ZONE = ZoneId.of("America/Sao_Paulo");
+
     private java.util.Date calculateNextResetTime() {
-        // Calculate next midnight UTC
-        LocalDate tomorrow = LocalDate.now(ZoneOffset.UTC).plusDays(1);
-        return java.util.Date.from(tomorrow.atStartOfDay(ZoneOffset.UTC).toInstant());
+        // Reset at midnight Brazil time (America/Sao_Paulo, UTC-3 / UTC-2 in DST)
+        LocalDate tomorrow = LocalDate.now(BRAZIL_ZONE).plusDays(1);
+        return java.util.Date.from(tomorrow.atStartOfDay(BRAZIL_ZONE).toInstant());
     }
 
     private UserSubscription loadOrCreateSubscription(String userId) {
@@ -211,13 +224,39 @@ public class SubscriptionService {
             String ipAddress,
             String fingerprint) {
         return repository.findByUserId(userId)
-                .map(existing -> existing) // computeIfAbsent já adiciona ao cache
                 .orElseGet(() -> {
                     UserSubscription created = createDefaultSubscription(userId, userEmail, ipAddress, fingerprint);
-                    repository.save(created);
-                    // computeIfAbsent já adiciona ao cache
+                    try {
+                        repository.save(created);
+                    } catch (RuntimeException e) {
+                        logger.warn("Failed to persist new subscription for user {}: {}", userId, e.getMessage());
+                    }
                     return created;
                 });
+    }
+
+    private void resetCreditsIfNeeded(String userId, UserSubscription subscription) {
+        Date resetTime = subscription.getResetTime();
+        if (resetTime == null || !resetTime.before(new Date())) {
+            return;
+        }
+        // The reset window has passed — restore daily credits
+        synchronized (subscription) {
+            // Re-check inside lock to avoid double-reset from concurrent calls
+            if (subscription.getResetTime() == null || !subscription.getResetTime().before(new Date())) {
+                return;
+            }
+            int limit = subscription.getDailyLimit() > 0 ? subscription.getDailyLimit() : initialCreditsAmount;
+            subscription.setCreditsRemaining(limit);
+            subscription.setCreditsUsed(0);
+            subscription.setResetTime(calculateNextResetTime());
+            try {
+                repository.save(subscription);
+            } catch (RuntimeException e) {
+                logger.warn("Failed to persist credit reset for user {}: {}", userId, e.getMessage());
+            }
+            subscriptionsCache.put(userId, subscription);
+        }
     }
 
     private void validateCreditPurchase(int credits) {
@@ -254,8 +293,8 @@ public class SubscriptionService {
                 counter.setCount(0);
             }
             counter.setCount(counter.getCount() + 1);
-            counter.setUpdatedAt(Instant.now());
-            counter.setExpireAt(Instant.now().plus(counterTtlDays, ChronoUnit.DAYS));
+            counter.setUpdatedAt(Timestamp.now());
+            counter.setExpireAt(Timestamp.of(Date.from(Instant.now().plus(counterTtlDays, ChronoUnit.DAYS))));
             counterRepository.save(counter);
         }
     }
@@ -277,7 +316,7 @@ public class SubscriptionService {
                     created.setKey(key);
                     created.setDay(LocalDate.now(ZoneOffset.UTC).toString());
                     created.setCount(0);
-                    created.setUpdatedAt(Instant.now());
+                    created.setUpdatedAt(Timestamp.now());
                     return created;
                 });
         cache.put(cacheKey, counter);
@@ -298,8 +337,8 @@ public class SubscriptionService {
                     created.setDay(LocalDate.now(ZoneOffset.UTC).toString());
                     created.setCount(0);
                     created.setGranted(false);
-                    created.setUpdatedAt(Instant.now());
-                    created.setExpireAt(Instant.now().plus(counterTtlDays, ChronoUnit.DAYS));
+                    created.setUpdatedAt(Timestamp.now());
+                    created.setExpireAt(Timestamp.of(Date.from(Instant.now().plus(counterTtlDays, ChronoUnit.DAYS))));
                     return created;
                 });
 
@@ -317,12 +356,12 @@ public class SubscriptionService {
                     created.setDay(LocalDate.now(ZoneOffset.UTC).toString());
                     created.setCount(0);
                     created.setGranted(false);
-                    created.setUpdatedAt(Instant.now());
+                    created.setUpdatedAt(Timestamp.now());
                     return created;
                 });
         counter.setGranted(granted);
-        counter.setUpdatedAt(Instant.now());
-        counter.setExpireAt(Instant.now().plus(accountTtlDays, ChronoUnit.DAYS));
+        counter.setUpdatedAt(Timestamp.now());
+        counter.setExpireAt(Timestamp.of(Date.from(Instant.now().plus(accountTtlDays, ChronoUnit.DAYS))));
         counterRepository.save(counter);
         initialCreditAccountGrants.put(accountKey, granted);
         initialCreditAccounts.add(accountKey);

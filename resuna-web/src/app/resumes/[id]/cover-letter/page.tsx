@@ -15,7 +15,7 @@ import {
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { aiApi, coverLetterApi, resumeApi } from "@/lib/api";
+import { aiApi, coverLetterApi, resumeApi, ApiRequestError } from "@/lib/api";
 import type { CoverLetter, Resume } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import TurnstileWrapper from "@/components/Turnstile";
@@ -267,21 +267,25 @@ export default function CoverLetterPage({ params }: { params: Promise<{ id: stri
         currentLetterId
       );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      const isUnavailable =
-        msg.includes("503") ||
-        msg.includes("429") ||
-        msg.toLowerCase().includes("unavailable") ||
-        msg.toLowerCase().includes("timeout") ||
-        msg.toLowerCase().includes("openrouter");
+      if (err instanceof ApiRequestError && err.status === 403) {
+        setAiError("Você atingiu o limite de créditos diários. Seus créditos serão renovados à meia-noite.");
+      } else {
+        const msg = err instanceof Error ? err.message : "";
+        const isUnavailable =
+          msg.includes("503") ||
+          msg.includes("429") ||
+          msg.toLowerCase().includes("unavailable") ||
+          msg.toLowerCase().includes("timeout") ||
+          msg.toLowerCase().includes("openrouter");
 
-      setAiError(
-        isUnavailable
-          ? "O serviço de IA está temporariamente indisponível (API gratuita). Sua carta foi mantida — você pode baixá-la agora ou tentar refinar novamente mais tarde."
-          : err instanceof Error
-          ? err.message
-          : "Erro ao refinar. Tente novamente."
-      );
+        setAiError(
+          isUnavailable
+            ? "O serviço de IA está temporariamente indisponível (API gratuita). Sua carta foi mantida — você pode baixá-la agora ou tentar refinar novamente mais tarde."
+            : err instanceof Error
+            ? err.message
+            : "Erro ao refinar. Tente novamente."
+        );
+      }
     } finally {
       setIsRefining(false);
     }

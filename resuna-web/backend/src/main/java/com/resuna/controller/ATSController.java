@@ -120,7 +120,7 @@ public class ATSController {
 
         analyticsService.logActivity(userId, null, "ATS_ANALYSIS",
                 "{\"resumeId\":\"" + request.getResumeId() + "\",\"score\":" + result.getScore() + "}",
-                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(httpRequest), httpRequest.getHeader("User-Agent"));
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .header("X-Credits-Remaining", String.valueOf(
@@ -234,11 +234,15 @@ public class ATSController {
             pdfSecurityService.validatePDF(file);
         } catch (PDFSecurityService.SecurityException e) {
             logger.error("Security validation failed for user {}: {}", userId, e.getMessage());
-            analyticsService.logActivity(userId, null, "SECURITY_ALERT",
+            logActivitySafely(userId, "SECURITY_ALERT",
                 "{\"type\":\"pdf_validation_failed\",\"reason\":\"" + e.getMessage() + "\"}",
-                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(httpRequest), httpRequest.getHeader("User-Agent"));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "Invalid or unsafe PDF file"));
+        } catch (IOException e) {
+            logger.error("IO error during PDF validation for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Falha ao validar o PDF. Tente novamente."));
         }
 
         if (!subscriptionService.canUseAIFeatures(userId, userEmail, ipAddress, fingerprint)) {
@@ -256,6 +260,10 @@ public class ATSController {
             logger.error("Failed to extract text from PDF for user {}", userId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Falha ao processar o PDF. Verifique se o arquivo não está corrompido."));
+        } catch (Exception e) {
+            logger.error("Unexpected error analyzing PDF for user {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Falha inesperada ao analisar o PDF. Tente novamente."));
         }
         boolean consumed = subscriptionService.consumeCredits(userId, 1, userEmail, ipAddress, fingerprint);
         if (!consumed) {
@@ -264,9 +272,9 @@ public class ATSController {
         }
 
         // Log activity (DO NOT log fileName - may contain PII)
-        analyticsService.logActivity(userId, null, "ATS_ANALYSIS_PDF",
+        logActivitySafely(userId, "ATS_ANALYSIS_PDF",
                 "{\"score\":" + result.getScore() + "}",
-                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
+                securityUtils.getSecureClientIp(httpRequest), httpRequest.getHeader("User-Agent"));
 
         return ResponseEntity.ok()
                 .header("X-Credits-Remaining", String.valueOf(
@@ -326,5 +334,13 @@ public class ATSController {
         }
         return signature[0] == '%' && signature[1] == 'P' && signature[2] == 'D'
                 && signature[3] == 'F' && signature[4] == '-';
+    }
+
+    private void logActivitySafely(String userId, String action, String details, String ipAddress, String userAgent) {
+        try {
+            analyticsService.logActivity(userId, null, action, details, ipAddress, userAgent);
+        } catch (RuntimeException ex) {
+            logger.warn("Failed to log analytics action '{}': {}", action, ex.getMessage());
+        }
     }
 }

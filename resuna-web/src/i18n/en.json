@@ -279,7 +279,17 @@
         "upgradePlan": "Upgrade Plan",
         "recentManuscripts": "Recent Manuscripts",
         "softwareEngineerResume": "Software Engineer Resume V",
-        "edited2DaysAgo": "Edited 2 days ago"
+        "edited2DaysAgo": "Edited 2 days ago",
+        "noResumesYet": "No resumes yet.",
+        "untitledResume": "Untitled Resume",
+        "dangerZone": "Danger Zone",
+        "deleteAccount": "Delete My Account",
+        "deleteAccountDesc": "This action is permanent and irreversible. All your data will be removed.",
+        "deleteAccountConfirm": "Are you sure? This action cannot be undone.",
+        "deleteAccountConfirmBtn": "Yes, delete my account",
+        "deleteAccountCancel": "Cancel",
+        "deleteAccountDeleting": "Deleting...",
+        "deleteAccountReauth": "For security, sign out and sign back in before deleting your account."
     },
     "upload": {
         "title": "PDF Analysis Studio",
@@ -451,6 +461,9 @@
         "present": "Present",
         "additionalSections": "(Additional sections populated...)",
         "failedDownloadPdf": "Failed to download PDF",
+        "failedDownloadDocx": "Failed to download DOCX",
+        "justLoaded": "Just loaded",
+        "justNow": "Just now",
         "yourName": "Your Name"
     },
     "monthPicker": {

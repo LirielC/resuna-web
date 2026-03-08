@@ -45,11 +45,11 @@ export default function TurnstileWrapper({
         siteKey={siteKey}
         onSuccess={onSuccess}
         onError={() => {
-          console.error('Turnstile error');
+          if (process.env.NODE_ENV !== 'production') console.error('Turnstile error');
           onError?.();
         }}
         onExpire={() => {
-          console.warn('Turnstile token expired');
+          if (process.env.NODE_ENV !== 'production') console.warn('Turnstile token expired');
           onExpire?.();
         }}
         options={{

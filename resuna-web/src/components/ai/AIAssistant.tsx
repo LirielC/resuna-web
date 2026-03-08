@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
-import { aiApi, subscriptionApi } from "@/lib/api";
+import { aiApi, subscriptionApi, ApiRequestError } from "@/lib/api";
 import TurnstileWrapper from "@/components/Turnstile";
 
 interface AIAssistantProps {
@@ -61,8 +61,12 @@ export function AIAssistant({ resumeId, onRefineComplete }: AIAssistantProps) {
             } catch {
                 setToastMessage("1 crédito usado.");
             }
-        } catch (err: any) {
-            setError(err.message || "Falha ao refinar. Tente novamente.");
+        } catch (err) {
+            if (err instanceof ApiRequestError && err.status === 403) {
+                setError("Você atingiu o limite de créditos diários. Seus créditos serão renovados à meia-noite.");
+            } else {
+                setError(err instanceof Error ? err.message : "Falha ao refinar. Tente novamente.");
+            }
         } finally {
             setIsLoading(false);
         }

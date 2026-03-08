@@ -85,7 +85,7 @@ public class SubscriptionController {
             response.put("dailyLimit", subscription.getDailyLimit());
             response.put("resetTime", subscription.getResetTime());
             response.put("tier", "FREE"); // Always free
-            response.put("status", subscription.getStatus().toString());
+            response.put("status", subscription.getStatus() != null ? subscription.getStatus().toString() : "FREE");
 
             return ResponseEntity.ok(response);
 

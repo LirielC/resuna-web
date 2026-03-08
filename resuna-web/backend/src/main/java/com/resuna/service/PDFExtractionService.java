@@ -61,6 +61,10 @@ public class PDFExtractionService {
         } catch (IOException e) {
             logger.error("Failed to extract text from PDF: {}", e.getMessage());
             throw new IOException("Failed to read PDF file: " + e.getMessage(), e);
+        } catch (Exception e) {
+            // PDFBox can throw RuntimeException for certain malformed/encrypted PDFs
+            logger.error("Unexpected error extracting text from PDF: {}", e.getMessage());
+            throw new IOException("Failed to parse PDF file: " + e.getMessage(), e);
         }
     }
 

@@ -63,6 +63,10 @@ public class FirestoreUserProfileRepository implements UserProfileRepository {
         }
     }
 
+    public void deleteByUserId(String userId) throws ExecutionException, InterruptedException {
+        firestore.collection(COLLECTION_NAME).document(userId).delete().get();
+    }
+
     @Override
     public Map<String, UserProfile> findAll() {
         try {

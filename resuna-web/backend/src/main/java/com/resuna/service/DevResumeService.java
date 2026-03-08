@@ -63,4 +63,10 @@ public class DevResumeService implements ResumeService {
         getResumeById(id, userId);
         repository.deleteById(id);
     }
+
+    public void deleteAllByUserId(String userId) {
+        repository.findAllByUserId(userId).forEach(r -> {
+            if (r != null && r.getId() != null) repository.deleteById(r.getId());
+        });
+    }
 }
