@@ -8,7 +8,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python&logoColor=white)
 ![Licenca](https://img.shields.io/badge/Licenca-MIT-brightgreen?style=flat-square)
 
-Plataforma completa para criacao e otimizacao de curriculos, com analise de compatibilidade ATS, revisao por inteligencia artificial, geracao de cartas de apresentacao e exportacao em PDF e DOCX.
+Editor de curriculos com IA, analise ATS, geracao de cartas de apresentacao e exportacao em PDF e DOCX. Gratuito e open source.
 
 ---
 
@@ -31,9 +31,9 @@ Plataforma completa para criacao e otimizacao de curriculos, com analise de comp
 
 ## Visao geral
 
-O Resuna é um app web de curriculos com foco em rastreadores automatizados de candidatos (ATS). Ele oferece um editor de curriculos com preenchimento estruturado, analise de compatibilidade com vagas, sugestoes de melhoria via IA, geracao de carta de apresentacao e exportacao para PDF e DOCX — tudo a partir de um unico painel.
+O Resuna e um editor de curriculos com foco em rastreadores automatizados de candidatos (ATS). Oferece formulario estruturado, analise de compatibilidade com vagas, sugestoes via IA, carta de apresentacao e exportacao para PDF e DOCX.
 
-Os dados do usuario sao armazenados localmente no navegador (localStorage) por padrao, sem necessidade de sincronizacao com servidor para as operacoes do editor. As operacoes de IA e exportacao sao realizadas pelo backend com autenticacao obrigatoria.
+Os curriculos sao armazenados localmente no navegador (localStorage). As operacoes de IA e exportacao passam pelo backend com autenticacao obrigatoria.
 
 ---
 
@@ -53,7 +53,7 @@ graph TB
         AIC["AIController"]
         ATSC["ATSController"]
         ES["ExportService (PDF / DOCX)"]
-        ORS["OpenRouterService (IA)"]
+        ORS["OpenRouterService / GeminiService"]
         SS["SubscriptionService (creditos)"]
     end
 
@@ -79,7 +79,6 @@ graph TB
     AE --> NLP
     RC --> ES
     RC --> FS
-    ORS -->|API OpenRouter| ORS
     SS --> FS
     Backend --> CR
     ATS --> CR
@@ -91,20 +90,18 @@ graph TB
 
 ### Editor de curriculos
 
-- Formulario estruturado com secoes: informacoes pessoais, resumo, experiencia, formacao, projetos, habilidades, certificacoes e idiomas
+- Formulario estruturado: informacoes pessoais, resumo, experiencia, formacao, projetos, habilidades, certificacoes e idiomas
 - Calculo de completude em tempo real
-- Visualizacao de previa do PDF no editor
-- Armazenamento automatico no navegador
+- Armazenamento automatico no navegador, isolado por conta de usuario
 
 ### Exportacao
 
-- Geracao de PDF com formatacao profissional, suporte a fontes customizadas e links clicaveis para projetos
-- Exportacao para DOCX (Microsoft Word) com estilos de paragrafo e hiperlinks
-- Traducao do curriculo para ingles, frances, espanhol ou japones com exportacao imediata
+- PDF com formatacao profissional, fontes customizadas e links clicaveis
+- DOCX (Microsoft Word) com estilos de paragrafo e hiperlinks
+- Traducao do curriculo de portugues para ingles com exportacao imediata
 
 ### Analise ATS
 
-- Analise de compatibilidade entre o curriculo e uma descricao de vaga
 - Pontuacao de 0 a 100 com detalhamento por categoria: palavras-chave, habilidades, experiencia, formacao e formatacao
 - Identificacao de lacunas e palavras-chave ausentes
 - Analise de PDF enviado diretamente (upload)
@@ -112,16 +109,15 @@ graph TB
 
 ### Inteligencia artificial
 
-- Revisao critica do curriculo com pontuacao geral, pontos fortes, pontos fracos e acoes rapidas
+- Revisao critica do curriculo com pontos fortes, pontos fracos e sugestoes rapidas
 - Refinamento de topicos de experiencia com sugestoes especificas
 - Geracao de carta de apresentacao personalizada por empresa e cargo
-- Importacao de curriculo a partir de PDF existente com extracao de dados
+- Importacao de curriculo a partir de PDF existente
 
-### Creditos e planos
+### Creditos
 
-- Sistema de creditos diarios: 10 creditos por usuario por dia (redefinido a meia-noite UTC)
-- Limite de 3 contas por endereco IP
-- Sinalizadores de funcionalidades por usuario gerenciaveis pelo painel administrativo
+- 5 creditos de IA por usuario por dia, renovados a meia-noite no horario de Brasilia
+- Controle de abuso por IP e fingerprint na criacao de contas
 
 ---
 
@@ -134,13 +130,9 @@ graph TB
 | Next.js | 15.5 | Framework React com App Router |
 | React | 18.2 | Interface de usuario |
 | TypeScript | 5.9 | Tipagem estatica |
-| Tailwind CSS | 3.4 | Estilizacao utilitaria |
+| Tailwind CSS | 3.4 | Estilizacao |
 | Framer Motion | 11.0 | Animacoes |
-| Lucide React | 0.300 | Icones |
-| Firebase SDK | 12.8 | Autenticacao e banco de dados |
-| jsPDF | 4.2 | Geracao de PDF no cliente |
-| docx | 9.6 | Geracao de DOCX no cliente |
-| DOMPurify | 3.3 | Sanitizacao de HTML |
+| Firebase SDK | 12.8 | Autenticacao |
 | Playwright | 1.58 | Testes end-to-end |
 
 ### Backend
@@ -152,8 +144,7 @@ graph TB
 | Firebase Admin SDK | 9.2 | Autenticacao e Firestore |
 | Apache PDFBox | 3.0.1 | Geracao e leitura de PDF |
 | Apache POI | 5.2.5 | Geracao de DOCX |
-| OkHttp | 4.12 | Cliente HTTP (OpenRouter) |
-| Jackson JSR310 | 3.2 | Serializacao de datas |
+| OkHttp | 4.12 | Cliente HTTP (OpenRouter / Gemini) |
 | Maven | 3.9 | Build e dependencias |
 
 ### Motor ATS (Python)
@@ -171,7 +162,7 @@ graph TB
 | Servico | Uso |
 |---|---|
 | Google Cloud Run | Hospedagem do backend e do motor ATS |
-| Firebase Firestore | Banco de dados principal |
+| Firebase Firestore | Banco de dados |
 | Firebase Authentication | Login com Google OAuth |
 | Cloudflare Turnstile | CAPTCHA anti-abuso nas operacoes de IA |
 
@@ -185,7 +176,6 @@ resuna-web/
 │   ├── app/                        # Paginas (Next.js App Router)
 │   │   ├── page.tsx                # Landing page
 │   │   ├── login/
-│   │   ├── dashboard/
 │   │   ├── resumes/
 │   │   │   ├── page.tsx            # Lista de curriculos
 │   │   │   ├── create/             # Criacao de novo curriculo
@@ -197,7 +187,7 @@ resuna-web/
 │   │   ├── account/
 │   │   └── admin/
 │   ├── components/
-│   │   ├── layout/                 # Header, Footer
+│   │   ├── layout/                 # Header
 │   │   └── ui/                     # Button, Card, Input, Toast...
 │   ├── contexts/
 │   │   ├── AuthContext.tsx
@@ -205,8 +195,8 @@ resuna-web/
 │   └── lib/
 │       ├── api.ts                  # Cliente da API backend
 │       ├── storage.ts              # Persistencia local (localStorage)
-│       ├── completeness.ts         # Score de preenchimento do curriculo
-│       ├── types.ts                # Definicoes de tipos TypeScript
+│       ├── completeness.ts         # Score de preenchimento
+│       ├── types.ts                # Tipos TypeScript
 │       └── firebase.ts             # Inicializacao do Firebase
 ├── backend/
 │   ├── src/main/java/com/resuna/
@@ -222,10 +212,9 @@ resuna-web/
 │   │   └── Dockerfile
 │   └── pom.xml
 ├── tests/e2e/                      # Testes Playwright
-├── public/                         # Arquivos estaticos
-├── Dockerfile                      # Build do frontend
+├── public/
+├── Dockerfile
 ├── next.config.js
-├── tailwind.config.ts
 └── playwright.config.ts
 ```
 
@@ -249,8 +238,8 @@ resuna-web/
 ### 1. Clonar o repositorio
 
 ```bash
-git clone <url-do-repositorio>
-cd resuna-web
+git clone https://github.com/LirielC/resuna-web.git
+cd resuna-web/resuna-web
 ```
 
 ### 2. Configurar o frontend
@@ -259,7 +248,7 @@ cd resuna-web
 npm install
 ```
 
-Crie o arquivo `.env.local` na raiz do projeto `resuna-web/`:
+Crie o arquivo `.env.local` na pasta `resuna-web/`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080
@@ -272,8 +261,6 @@ NEXT_PUBLIC_FIREBASE_APP_ID=...
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=      # deixe vazio para desabilitar CAPTCHA em dev
 ```
 
-Inicie o servidor de desenvolvimento:
-
 ```bash
 npm run dev
 # Disponivel em http://localhost:3000
@@ -285,37 +272,27 @@ npm run dev
 cd backend
 ```
 
-Crie o arquivo `backend/.env` com base em `backend/.env.example`. Chaves obrigatorias:
-
-```env
-OPENROUTER_API_KEY=sk-or-v1-...
-FIREBASE_PROJECT_ID=seu-projeto-firebase
-SPRING_PROFILES_ACTIVE=dev
-TURNSTILE_ENABLED=false
-```
-
 Adicione o arquivo de credenciais do Firebase Admin SDK em:
 `backend/src/main/resources/firebase-admin-key.json`
 
 Para obter o arquivo: Console Firebase > Configuracoes do projeto > Contas de servico > Gerar nova chave privada.
 
-Inicie o backend:
+Configure as variaveis de ambiente (veja secao abaixo) e inicie:
 
 ```bash
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 # API disponivel em http://localhost:8080
 ```
 
 ### 4. Configurar o motor ATS (opcional)
 
-O motor ATS e utilizado apenas para analise de compatibilidade com vagas. Se nao for configurado, o backend utiliza sua propria implementacao de analise local.
+O motor ATS e utilizado apenas para analise de compatibilidade com vagas. Se nao for configurado, o backend usa uma implementacao local de fallback.
 
 ```bash
 cd backend/ats-engine
 pip install -r requirements.txt
 python -m spacy download en_core_web_md
 uvicorn main:app --reload --port 8000
-# Disponivel em http://localhost:8000
 ```
 
 ---
@@ -333,23 +310,22 @@ uvicorn main:app --reload --port 8000
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Sim | Bucket de storage Firebase |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Sim | ID do sender Firebase |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Sim | ID do app Firebase |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Nao | Site key do Cloudflare Turnstile (CAPTCHA) |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Nao | Site key do Cloudflare Turnstile |
 
-### Backend (`backend/.env`)
+### Backend
 
 | Variavel | Obrigatorio | Descricao |
 |---|---|---|
-| `OPENROUTER_API_KEY` | Sim | Chave da API OpenRouter para funcionalidades de IA |
+| `OPENROUTER_API_KEY` | Sim | Chave da API OpenRouter |
+| `GEMINI_API_KEY` | Nao | Chave da API Gemini (preferida para traducao) |
 | `FIREBASE_PROJECT_ID` | Sim | ID do projeto Firebase |
-| `FIREBASE_CREDENTIALS_PATH` | Nao | Caminho para o JSON de credenciais (padrao: `classpath:firebase-admin-key.json`) |
+| `FIREBASE_CREDENTIALS_PATH` | Nao | Caminho para o JSON de credenciais |
 | `SPRING_PROFILES_ACTIVE` | Nao | Perfil Spring: `dev` ou `prod` |
 | `TURNSTILE_SECRET_KEY` | Nao | Chave secreta do Cloudflare Turnstile |
-| `TURNSTILE_ENABLED` | Nao | Habilitar CAPTCHA (padrao: `true` em producao) |
+| `TURNSTILE_ENABLED` | Nao | Habilitar CAPTCHA (padrao: `true`) |
 | `CORS_ALLOWED_ORIGINS` | Nao | Origens permitidas para CORS |
 | `INITIAL_ADMIN_EMAIL` | Nao | Email que recebera permissao de admin automaticamente |
-| `CREDITS_DAILY_LIMIT` | Nao | Limite de creditos por usuario por dia (padrao: `10`) |
 | `ATS_ENGINE_URL` | Nao | URL do motor ATS externo (padrao: `http://localhost:8000`) |
-| `APP_DEBUG` | Nao | Exibir erros detalhados nas respostas (nao usar em producao) |
 
 ---
 
@@ -361,12 +337,12 @@ uvicorn main:app --reload --port 8000
 npx tsc --noEmit
 ```
 
-### Testes do backend (JUnit + Spring Boot Test)
+### Testes do backend (JUnit)
 
 ```bash
-cd backend
+cd resuna-web/backend
 mvn test -Dspring.profiles.active=dev
-# 116 testes, 0 falhas
+# 135 testes, 0 falhas
 ```
 
 ### Testes end-to-end (Playwright)
@@ -375,77 +351,56 @@ mvn test -Dspring.profiles.active=dev
 # Instalar os navegadores na primeira execucao
 node_modules/.bin/playwright install chromium firefox
 
-# Executar os testes
 npx playwright test --reporter=list
-
-# Modo interativo
-npx playwright test --ui
 ```
 
 ---
 
 ## Deploy
 
-### Google Cloud Run (recomendado)
+O projeto inclui `Dockerfile` para o frontend e `backend/Dockerfile` para o backend. O script `deploy.sh` na raiz automatiza o build e o deploy para o Google Cloud Run.
 
-O projeto inclui `Dockerfile` para o frontend e `backend/Dockerfile` para o backend.
+```bash
+# Deploy completo (backend + frontend)
+bash deploy.sh
+```
+
+Para deploy manual:
 
 ```bash
 # Backend
-cd backend
+cd resuna-web/backend
 gcloud run deploy resuna-backend \
   --source . \
   --project SEU_PROJETO_GCP \
-  --region us-central1 \
-  --set-env-vars OPENROUTER_API_KEY=...,FIREBASE_PROJECT_ID=...
+  --region us-central1
 
 # Frontend
-cd ..
+cd resuna-web
 gcloud run deploy resuna-frontend \
   --source . \
   --project SEU_PROJETO_GCP \
   --region us-central1 \
-  --set-env-vars NEXT_PUBLIC_API_URL=https://resuna-backend-....run.app,...
-```
-
-### Docker local
-
-```bash
-# Frontend
-docker build -t resuna-frontend .
-docker run -p 3000:3000 --env-file .env.local resuna-frontend
-
-# Backend
-cd backend
-docker build -t resuna-backend .
-docker run -p 8080:8080 --env-file .env resuna-backend
+  --set-env-vars API_URL=https://resuna-backend-....run.app
 ```
 
 ---
 
 ## Seguranca
 
-O projeto implementa as seguintes medidas de seguranca:
-
-- Autenticacao via Firebase Auth com tokens JWT verificados pelo backend a cada requisicao
-- Filtro de rate limiting por IP: 60 req/min geral, 5 req/min para endpoints de IA
+- Autenticacao via Firebase Auth com tokens JWT verificados a cada requisicao
+- Isolamento de dados por usuario: cada curriculo e vinculado a um `userId` verificado no backend
+- Rate limiting por IP: 60 req/min geral, 5 req/min para endpoints de IA
 - CAPTCHA obrigatorio (Cloudflare Turnstile) nas operacoes de IA
-- Injecao de prompt detectada antes de enviar conteudo para a IA
-- Validacao de assinatura e tamanho de arquivos PDF enviados
-- CORS configurado explicitamente com lista de origens permitidas
-- Headers de seguranca: HSTS, X-Content-Type-Options, X-Frame-Options, CSP
-- PII anonimizado nos logs: IPs hasheados com SHA-256, emails omitidos
-- URLs de projetos sanitizadas antes de renderizar em PDF/DOCX
-- Confianca em `CF-Connecting-IP` restrita a requisicoes de IPs privados (proxies internos)
+- Firestore com deny-by-default: clientes nao tem acesso direto aos dados de outros usuarios
+- Headers de seguranca: HSTS, CSP, X-Content-Type-Options, X-Frame-Options
+- IPs anonimizados nos logs (SHA-256), emails omitidos de telemetria
+- URLs sanitizadas antes de renderizar em PDF/DOCX
+
+Para relatar uma vulnerabilidade, consulte [SECURITY.md](resuna-web/SECURITY.md).
 
 ---
 
 ## Licenca
 
 Distribuido sob a licenca MIT. Consulte o arquivo [LICENSE](LICENSE) para detalhes.
-
----
-
-## Colaboracoes
-
-Consulte o arquivo [COLLABORATIONS.md](COLLABORATIONS.md) para instrucoes sobre como contribuir com o projeto.
