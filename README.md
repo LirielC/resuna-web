@@ -8,7 +8,7 @@
 ![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python&logoColor=white)
 ![Licenca](https://img.shields.io/badge/Licenca-MIT-brightgreen?style=flat-square)
 
-Editor de curriculos com IA, analise ATS, geracao de cartas de apresentacao e exportacao em PDF e DOCX. Gratuito e open source.
+Editor de curriculos com IA, analise ATS e exportacao em PDF e DOCX. Gratuito e open source.
 
 ---
 
@@ -31,7 +31,7 @@ Editor de curriculos com IA, analise ATS, geracao de cartas de apresentacao e ex
 
 ## Visao geral
 
-O Resuna e um editor de curriculos com foco em rastreadores automatizados de candidatos (ATS). Oferece formulario estruturado, analise de compatibilidade com vagas, sugestoes via IA, carta de apresentacao e exportacao para PDF e DOCX.
+O Resuna e um editor de curriculos com foco em rastreadores automatizados de candidatos (ATS). Oferece formulario estruturado, analise de compatibilidade com vagas, sugestoes via IA e exportacao para PDF e DOCX.
 
 Os curriculos sao armazenados localmente no navegador (localStorage). As operacoes de IA e exportacao passam pelo backend com autenticacao obrigatoria.
 
@@ -111,7 +111,6 @@ graph TB
 
 - Revisao critica do curriculo com pontos fortes, pontos fracos e sugestoes rapidas
 - Refinamento de topicos de experiencia com sugestoes especificas
-- Geracao de carta de apresentacao personalizada por empresa e cargo
 - Importacao de curriculo a partir de PDF existente
 
 ### Creditos
@@ -182,7 +181,6 @@ resuna-web/
 │   │   │   ├── [id]/               # Editor dinamico
 │   │   │   │   ├── page.tsx        # Editor principal
 │   │   │   │   ├── analyze/        # Revisor de curriculo (IA)
-│   │   │   │   └── cover-letter/   # Geracao de carta
 │   │   │   └── import/pdf/         # Importacao de PDF
 │   │   ├── account/
 │   │   └── admin/
