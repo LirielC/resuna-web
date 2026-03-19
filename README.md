@@ -31,7 +31,7 @@ Editor de curriculos com IA, analise ATS e exportacao em PDF e DOCX. Gratuito e 
 
 ## Visao geral
 
-O Resuna e um editor de curriculos com foco em rastreadores automatizados de candidatos (ATS). Oferece formulario estruturado, analise de compatibilidade com vagas, sugestoes via IA e exportacao para PDF e DOCX.
+O Resuna e um editor de curriculos com foco em gerar curriculos ATS e verifica-los. Oferece formulario estruturado, analise de compatibilidade com vagas, sugestoes via IA e exportacao para PDF e DOCX.
 
 Os curriculos sao armazenados localmente no navegador (localStorage). As operacoes de IA e exportacao passam pelo backend com autenticacao obrigatoria.
 
