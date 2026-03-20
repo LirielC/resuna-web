@@ -1,6 +1,7 @@
 # ── Secrets & Credentials (NEVER commit these) ───────────────────────────────
 .env
 .env.*
+deploy.env
 *.env
 *.key
 *.pem

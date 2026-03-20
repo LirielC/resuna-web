@@ -116,9 +116,9 @@ export default function TermsPage() {
               A Resuna é uma plataforma <strong>gratuita e open source</strong> que oferece:
             </p>
             <ul>
-              <li>Criação e edição de currículos armazenados localmente no seu navegador</li>
+              <li>Criação e edição de currículos sincronizados na sua conta (armazenamento em nuvem no Firestore) quando autenticado</li>
               <li>Análise de compatibilidade com sistemas ATS (Applicant Tracking System), processada no servidor</li>
-              <li>Refinamento de currículo, geração de carta de apresentação e tradução via IA (OpenRouter API)</li>
+              <li>Refinamento de currículo e tradução via IA (OpenRouter API)</li>
               <li>Exportação de documentos em PDF e DOCX</li>
             </ul>
             <p>
@@ -142,15 +142,15 @@ export default function TermsPage() {
 
             <h2>4. Armazenamento de Dados</h2>
             <p>
-              O conteúdo dos seus currículos e cartas de apresentação é armazenado <strong>localmente no seu navegador</strong> (localStorage), e não em nossos servidores. Isso significa que:
+              Com conta autenticada, o conteúdo dos seus <strong>currículos</strong> é armazenado no <strong>Google Cloud Firestore</strong>, associado ao seu UID, para sincronização entre dispositivos.
             </p>
             <ul>
-              <li>Seus dados de currículo permanecem no seu dispositivo</li>
-              <li>Limpar os dados do navegador apaga seus currículos — faça exportações regulares em JSON</li>
-              <li>Não temos acesso ao conteúdo dos seus currículos</li>
+              <li>Pode acessar os currículos da conta em qualquer dispositivo onde iniciar sessão</li>
+              <li>Recomendamos exportações periódicas em JSON como cópia de segurança</li>
+              <li>O acesso aos currículos na nuvem é técnico e restrito à operação do serviço; consulte a <Link href="/privacy">Política de Privacidade</Link> para detalhes</li>
             </ul>
             <p>
-              No servidor, armazenamos apenas: resultados de análises ATS, dados de uso anonimizados e informações de autenticação necessárias ao funcionamento.
+              No servidor, armazenamos também: resultados de análises ATS, dados de uso anonimizados e informações de autenticação necessárias ao funcionamento.
             </p>
 
             <h2>5. Uso Aceitável</h2>
@@ -188,7 +188,7 @@ export default function TermsPage() {
 
             <h3>7.1 Provedor de IA</h3>
             <p>
-              Os recursos de IA (refinamento, carta de apresentação, tradução) utilizam a <strong>API OpenRouter</strong>, que roteia requisições para modelos de linguagem abertos de múltiplos provedores. O conteúdo do seu currículo é enviado a esse serviço para processamento.
+              Os recursos de IA (refinamento, tradução, etc.) utilizam a <strong>API OpenRouter</strong>, que roteia requisições para modelos de linguagem abertos de múltiplos provedores. O conteúdo do seu currículo é enviado a esse serviço para processamento.
             </p>
 
             <h3>7.2 Sua Responsabilidade</h3>
@@ -240,7 +240,7 @@ export default function TermsPage() {
 
             <h3>12.1 Por Você</h3>
             <p>
-              Você pode excluir sua conta a qualquer momento através da página <Link href="/account">Minha Conta</Link>. Antes de excluir, exporte seus currículos em JSON, pois os dados locais não são recuperáveis.
+              Você pode excluir sua conta a qualquer momento através da página <Link href="/account">Minha Conta</Link>. Antes de excluir, exporte seus currículos em JSON; a exclusão da conta remove os dados associados no servidor conforme a política de retenção.
             </p>
 
             <h3>12.2 Por Nós</h3>

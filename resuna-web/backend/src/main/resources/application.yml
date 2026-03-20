@@ -20,7 +20,7 @@ firebase:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
-  allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,x-client-fingerprint}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:Authorization,Content-Type,x-client-fingerprint,x-captcha-token}
   allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
 
 # ATS Engine Configuration
@@ -61,6 +61,8 @@ app:
   super-admin-email: ${SUPER_ADMIN_EMAIL:}
   # Keep false in production; set true locally for verbose errors
   debug: ${APP_DEBUG:false}
+  # DELETE /api/users/me requires auth_time within this many seconds (reauthenticateWithPopup / fresh sign-in)
+  delete-account-max-auth-age-seconds: ${DELETE_ACCOUNT_MAX_AUTH_AGE_SECONDS:300}
 
 rate-limit:
   enabled: ${RATE_LIMIT_ENABLED:true}

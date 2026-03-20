@@ -1,0 +1,26 @@
+# Build do Next.js na Cloud Build com NEXT_PUBLIC_* no bundle (obrigatório para Firebase + Turnstile).
+# Uso: a partir da raiz do repo ResunaWeb, com deploy.sh (que passa --substitutions).
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/resuna-frontend:latest'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_API_KEY=${_NP_FB_API_KEY}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${_NP_FB_AUTH_DOMAIN}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_NP_FB_PROJECT_ID}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${_NP_FB_STORAGE_BUCKET}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${_NP_FB_MSG_SENDER_ID}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_FIREBASE_APP_ID=${_NP_FB_APP_ID}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_TURNSTILE_SITE_KEY=${_NP_TURNSTILE_SITE_KEY}'
+      - '.'
+images:
+  - 'gcr.io/$PROJECT_ID/resuna-frontend:latest'
+timeout: 1800s

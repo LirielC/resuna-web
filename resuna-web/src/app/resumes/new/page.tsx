@@ -7,17 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-
-// Design System: Editorial Luxury
-const THEME = {
-  bg: "bg-[#F8F6F1]", // Cream Paper
-  text: "text-stone-900",
-  textMuted: "text-stone-500",
-  accent: "text-orange-600",
-  border: "border-stone-200",
-  fontDisplay: "font-display", // Playfair Display
-  fontBody: "font-serif", // Crimson Pro / Source Serif
-};
+import { THEME } from "@/lib/theme";
 
 export default function NewResumePage() {
   const { t } = useTranslation();
@@ -71,7 +61,7 @@ export default function NewResumePage() {
             <h1 className={`${THEME.fontDisplay} text-3xl lg:text-4xl font-bold text-stone-900 mb-2`}>
               {t('newResume.title')}
             </h1>
-            <p className="text-stone-500 mb-12 italic font-serif">
+            <p className="text-stone-500 mb-12 italic text-base leading-relaxed">
               {t('newResume.subtitle')}
             </p>
 

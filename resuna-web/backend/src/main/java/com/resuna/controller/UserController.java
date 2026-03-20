@@ -13,12 +13,15 @@ import com.resuna.service.ResumeService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,6 +37,9 @@ public class UserController {
     private final SubscriptionRepository subscriptionRepository;
     private final UserProfileRepository userProfileRepository;
     private final ATSAnalysisRepository atsAnalysisRepository;
+
+    @Value("${app.delete-account-max-auth-age-seconds:300}")
+    private long deleteAccountMaxAuthAgeSeconds;
 
     public UserController(ResumeService resumeService, ATSService atsService,
                           SubscriptionRepository subscriptionRepository,
@@ -55,10 +61,21 @@ public class UserController {
     }
 
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deleteAccount(HttpServletRequest request) {
+    public ResponseEntity<?> deleteAccount(HttpServletRequest request) {
         String userId = null;
         try {
             userId = getCurrentUserId(request);
+
+            if (!isRecentAuthenticationForDeletion(request)) {
+                logger.warn("Account delete rejected — missing or stale auth_time for user {}", userId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of(
+                                "error", "Recent authentication required",
+                                "errorCode", "REAUTH_REQUIRED",
+                                "message",
+                                "Sign in with Google again to confirm account deletion (recent authentication required)."));
+            }
+
             logger.info("Starting full account deletion for user {}", userId);
 
             // 1. Delete all resumes
@@ -89,6 +106,20 @@ public class UserController {
             logger.error("Failed to delete account for user {}: {}", userId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * Requires a Firebase ID token whose {@code auth_time} is within
+     * {@link #deleteAccountMaxAuthAgeSeconds} (user must have signed in or reauthenticated recently).
+     * Mitigates account wipe using only a long-lived stolen token without Google proof.
+     */
+    private boolean isRecentAuthenticationForDeletion(HttpServletRequest request) {
+        Object authTimeAttr = request.getAttribute("firebaseAuthTimeSeconds");
+        if (!(authTimeAttr instanceof Long authTimeSeconds)) {
+            return false;
+        }
+        long now = Instant.now().getEpochSecond();
+        return (now - authTimeSeconds) <= deleteAccountMaxAuthAgeSeconds;
     }
 
     @GetMapping("/stats")

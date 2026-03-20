@@ -129,22 +129,24 @@ gcloud config set project YOUR_PROJECT_ID
 # 2. Build e push para GCR
 gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/resuna-ats-engine
 
-# 3. Deploy no Cloud Run
+# 3. Deploy no Cloud Run (us-central1 alinha com exemplo de tier gratuito; ajuste a região se quiser)
 gcloud run deploy resuna-ats-engine \
   --image gcr.io/YOUR_PROJECT_ID/resuna-ats-engine \
   --platform managed \
-  --region southamerica-east1 \
+  --region us-central1 \
   --allow-unauthenticated \
-  --memory 1Gi \
-  --cpu 1 \
-  --timeout 60s \
-  --max-instances 10 \
-  --min-instances 0
+  --cpu=0.5 \
+  --memory=512Mi \
+  --concurrency=1 \
+  --min-instances=0 \
+  --max-instances=5 \
+  --no-cpu-boost \
+  --timeout 60s
 
 # 4. Obter URL
 gcloud run services describe resuna-ats-engine \
   --platform managed \
-  --region southamerica-east1 \
+  --region us-central1 \
   --format 'value(status.url)'
 ```
 

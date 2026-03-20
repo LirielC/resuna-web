@@ -5,6 +5,7 @@ out/
 # Env / secrets
 .env
 .env.*
+firebaseconfig
 backend/src/main/resources/firebase-service-account.json
 backend/src/main/resources/firebase-admin-key.json
 
@@ -19,3 +20,7 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+.agent/skills/frontend-design
+/home/arch/Documentos/ResunaWeb/.claude
+/home/arch/Documentos/ResunaWeb/.agents
+/home/arch/Documentos/ResunaWeb/dogfood-output

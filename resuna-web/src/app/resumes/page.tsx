@@ -15,10 +15,10 @@ import {
   AlertCircle,
   Upload,
   Copy,
+  X,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { resumeApi, triggerDownload } from "@/lib/api";
-import { localResumeStorage } from "@/lib/storage";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { computeCompleteness } from "@/lib/completeness";
 import type { Resume } from "@/lib/types";
@@ -173,7 +173,9 @@ export default function ResumesPage() {
             <div className="mb-8 p-4 bg-red-50 text-red-800 border-l-2 border-red-500 rounded-sm flex items-center gap-3 animate-fade-in-up">
               <AlertCircle className="w-5 h-5" />
               {error}
-              <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-700">×</button>
+              <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-700">
+                <X className="w-5 h-5" />
+              </button>
             </div>
           )}
 

@@ -36,7 +36,7 @@ export default function SignupFormWithTurnstile() {
     setLoading(true);
 
     try {
-      // ✅ ENVIAR captchaToken para o backend
+      // ENVIAR captchaToken para o backend
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -105,7 +105,7 @@ export default function SignupFormWithTurnstile() {
           />
         </div>
 
-        {/* ✅ CAPTCHA Cloudflare Turnstile */}
+        {/* CAPTCHA Cloudflare Turnstile */}
         <div className="py-2">
           <TurnstileWrapper
             onSuccess={setToken}

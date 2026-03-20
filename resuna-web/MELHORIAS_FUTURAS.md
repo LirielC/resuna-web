@@ -72,8 +72,4 @@ Adicionar tradução para Espanhol (mercado latino) e Francês como próximas l�
 
 ## Segurança
 
-### 19. Auditoria de acesso a dados sensíveis
-Registrar logs de quem acessou/exportou qual currículo (importante para conformidade com LGPD).
 
-### 20. Expiração automática de contas inativas
-Notificar e eventualmente deletar dados de usuários inativos há mais de 12 meses (LGPD art. 16).

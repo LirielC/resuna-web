@@ -10,48 +10,35 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Orange Scale
+        // Resuna Editorial Colors
         orange: {
-          50: "#FFF7ED",
-          100: "#FFEDD5",
-          200: "#FED7AA",
-          300: "#FDBA74",
-          400: "#FB923C",
-          500: "#F97316",
-          600: "#EA580C",
-          700: "#C2410C",
-          800: "#9A3412",
-          900: "#7C2D12",
+          50: "var(--orange-50)",
+          100: "var(--orange-100)",
+          200: "var(--orange-200)",
+          400: "var(--orange-400)",
+          500: "var(--orange-500)",
+          600: "var(--orange-600)",
+          700: "var(--orange-700)",
         },
-        // Green Scale
         green: {
-          50: "#F0FDF4",
-          100: "#DCFCE7",
-          200: "#BBF7D0",
-          300: "#86EFAC",
-          400: "#4ADE80",
-          500: "#22C55E",
-          600: "#16A34A",
-          700: "#15803D",
-          800: "#166534",
-          900: "#14532D",
+          50: "var(--green-50)",
+          100: "var(--green-100)",
+          400: "var(--green-400)",
+          500: "var(--green-500)",
+          600: "var(--green-600)",
+          700: "var(--green-700)",
         },
-        // Warm Gray Scale
-        gray: {
-          50: "#FAFAF9",
-          100: "#F5F5F4",
-          200: "#E7E5E4",
-          300: "#D6D3D1",
-          400: "#A8A29E",
-          500: "#78716C",
-          600: "#57534E",
-          700: "#44403C",
-          800: "#292524",
-          900: "#1C1917",
-          950: "#0C0A09",
+        cream: "var(--cream)",
+        paper: "var(--paper)",
+        ink: {
+          DEFAULT: "var(--ink)",
+          soft: "var(--ink-soft)",
         },
+        /** Evita sobrescrever a escala `stone-*` do Tailwind (legibilidade + @apply) */
+        stoneMuted: "var(--stone)",
+        
         // Semantic
-        success: "#22C55E",
+        success: "var(--green-500)",
         warning: "#FBBF24",
         error: "#EF4444",
         info: "#3B82F6",
@@ -91,8 +78,11 @@ const config: Config = {
         ring: "hsl(var(--ring))",
       },
       fontFamily: {
-        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["var(--font-serif)", "ui-serif", "Georgia", "serif"],
+        display: ["var(--font-serif)", "ui-serif", "Georgia", "serif"],
+        body: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -107,6 +97,8 @@ const config: Config = {
         xl: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
         orange: "0 4px 14px rgba(249, 115, 22, 0.25)",
         green: "0 4px 14px rgba(34, 197, 94, 0.25)",
+        soft: "var(--shadow-soft)",
+        elevated: "var(--shadow-elevated)",
       },
       animation: {
         "fade-in": "fadeIn 0.4s ease-out",

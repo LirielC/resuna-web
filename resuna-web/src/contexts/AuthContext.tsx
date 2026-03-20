@@ -8,6 +8,7 @@ import {
     onAuthStateChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
+import { migrateLocalResumesToServerOnce } from '@/lib/api';
 import { setStorageUser } from '@/lib/storage';
 
 interface AuthContextType {
@@ -46,6 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return () => unsubscribe();
     }, []);
+
+    useEffect(() => {
+        if (loading || !user?.uid) return;
+        void migrateLocalResumesToServerOnce(user.uid);
+    }, [user?.uid, loading]);
 
     const signInWithGoogle = async () => {
         await signInWithPopup(auth, googleProvider);

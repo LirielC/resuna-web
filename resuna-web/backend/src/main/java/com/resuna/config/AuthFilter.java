@@ -88,6 +88,11 @@ public class AuthFilter implements Filter {
             httpRequest.setAttribute("userName", decodedToken.getName());
             httpRequest.setAttribute("userPicture", decodedToken.getPicture());
             httpRequest.setAttribute("userClaims", decodedToken.getClaims());
+            // Firebase ID token: seconds since epoch when the user last signed in or reauthenticated.
+            Object authTime = decodedToken.getClaims().get("auth_time");
+            if (authTime instanceof Number) {
+                httpRequest.setAttribute("firebaseAuthTimeSeconds", ((Number) authTime).longValue());
+            }
 
             // Populate Spring Security's SecurityContextHolder so that
             // anyRequest().authenticated() in SecurityConfig can verify the user is authenticated.

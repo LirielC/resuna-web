@@ -240,7 +240,7 @@ export default function UploadResumePage() {
                                 <Button
                                     onClick={handleAnalyze}
                                     disabled={isAnalyzing || !file || !jobDescription.trim()}
-                                    className="min-w-[250px] py-6 text-lg font-serif shadow-orange bg-stone-900 hover:bg-stone-800 text-white"
+                                    className="min-w-[250px] py-6 text-lg font-serif bg-stone-900 hover:bg-stone-800 text-white shadow-lg shadow-stone-900/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
                                 >
                                     {isAnalyzing ? (
                                         <>

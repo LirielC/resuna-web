@@ -17,10 +17,12 @@ import {
     Linkedin,
     Download,
     FileDown,
+    X,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { ApiRequestError, resumeApi, subscriptionApi, triggerDownload } from "@/lib/api";
+import TurnstileWrapper from "@/components/Turnstile";
 import { Toast } from "@/components/ui/Toast";
 import { useTranslation } from "@/contexts/LanguageContext";
 import type {
@@ -90,6 +92,10 @@ export default function CreateResumePage() {
     const [createdResume, setCreatedResume] = useState<Resume | null>(null);
     const [translationRetryable, setTranslationRetryable] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
+    const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const [translateCaptchaToken, setTranslateCaptchaToken] = useState<string | null>(
+        turnstileSiteKey ? null : "",
+    );
     const [isSaved, setIsSaved] = useState(false);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [downloadingDocx, setDownloadingDocx] = useState(false);
@@ -219,18 +225,25 @@ export default function CreateResumePage() {
         setTranslationRetryable(false);
         setError(null);
         try {
-            const translated = await resumeApi.translateToEnglish(resumeId);
+            const translated = await resumeApi.translateToEnglish(resumeId, translateCaptchaToken || undefined);
+            setTranslateCaptchaToken(turnstileSiteKey ? null : "");
             setTranslatedResume(translated);
             setToastMessage("Currículo traduzido com sucesso!");
             return translated;
         } catch (err) {
+            setTranslateCaptchaToken(turnstileSiteKey ? null : "");
             if (err instanceof ApiRequestError) {
                 setTranslationRetryable(err.retryable);
-                setError(err.message || "Não foi possível traduzir o currículo agora. Tente novamente.");
+                const msg = (err.message || "").toLowerCase();
+                if (err.status === 403 && (msg.includes("captcha") || msg.includes("verificação") || msg.includes("segurança"))) {
+                    setError(t("editor.translateCaptchaFailed"));
+                } else {
+                    setError(err.message || t("editor.translateFailed"));
+                }
             } else if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError("Não foi possível traduzir o currículo agora. Tente novamente.");
+                setError(t("editor.translateFailed"));
             }
             return null;
         } finally {
@@ -272,6 +285,11 @@ export default function CreateResumePage() {
         const validation = validateAll();
         if (!validation.valid) {
             setError(validation.error || "Por favor, corrija os erros antes de continuar");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+        if (translateToEnglish && turnstileSiteKey && translateCaptchaToken === null) {
+            setError(t("editor.translateCaptchaRequired"));
             window.scrollTo({ top: 0, behavior: "smooth" });
             return;
         }
@@ -484,8 +502,8 @@ export default function CreateResumePage() {
                                     value={summary}
                                     onChange={e => setSummary(e.target.value)}
                                 />
-                                <p className={`text-[11px] font-sans mt-2 transition-colors ${summary.length >= 50 ? "text-green-600" : "text-stone-400"}`}>
-                                    {summary.length} caracteres{summary.length >= 50 ? " ✓ mínimo atingido" : ` · mínimo 50`}
+                                <p className={`text-[11px] font-sans mt-2 transition-colors flex items-center gap-1 ${summary.length >= 50 ? "text-green-600" : "text-stone-400"}`}>
+                                    {summary.length} caracteres{summary.length >= 50 ? <><Check className="w-3 h-3" /> mínimo atingido</> : ` · mínimo 50`}
                                 </p>
                             </FormSection>
 
@@ -775,7 +793,9 @@ export default function CreateResumePage() {
                                                 {skills.map(skill => (
                                                     <span key={skill} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-stone-200 text-stone-700 text-sm rounded-full shadow-sm font-sans">
                                                         {skill}
-                                                        <button onClick={() => removeSkill(skill)} className="text-stone-300 hover:text-red-400 transition-colors text-base leading-none">×</button>
+                                                        <button onClick={() => removeSkill(skill)} className="text-stone-300 hover:text-red-400 transition-colors flex items-center justify-center">
+                                                            <X className="w-3.5 h-3.5" />
+                                                        </button>
                                                     </span>
                                                 ))}
                                             </div>
@@ -890,7 +910,11 @@ export default function CreateResumePage() {
                                             onClick={() => {
                                                 const next = !translateToEnglish;
                                                 setTranslateToEnglish(next);
-                                                if (!next) { setTranslationRetryable(false); setError(null); }
+                                                if (!next) {
+                                                    setTranslationRetryable(false);
+                                                    setError(null);
+                                                    setTranslateCaptchaToken(turnstileSiteKey ? null : "");
+                                                }
                                             }}
                                             className="flex items-center gap-3 group/toggle"
                                         >
@@ -901,6 +925,17 @@ export default function CreateResumePage() {
                                                 Traduzir meu currículo para inglês
                                             </span>
                                         </button>
+                                        {translateToEnglish && turnstileSiteKey && (
+                                            <div className="mt-4 pt-4 border-t border-stone-200/80">
+                                                <p className="text-xs text-stone-500 font-sans mb-2">{t("editor.translateCaptchaHint")}</p>
+                                                <TurnstileWrapper
+                                                    size="compact"
+                                                    onSuccess={(tok) => setTranslateCaptchaToken(tok)}
+                                                    onError={() => setTranslateCaptchaToken(null)}
+                                                    onExpire={() => setTranslateCaptchaToken(null)}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -914,7 +949,10 @@ export default function CreateResumePage() {
                                             const translated = await handleTranslateResume(createdResume.id!);
                                             if (translated) setIsSaved(true);
                                         }}
-                                        disabled={isTranslating}
+                                        disabled={
+                                            isTranslating
+                                            || (!!turnstileSiteKey && !translateCaptchaToken)
+                                        }
                                         className="text-sm text-amber-700 font-sans underline hover:text-amber-900 disabled:opacity-50 shrink-0"
                                     >
                                         {isTranslating ? "Tentando..." : "Tentar novamente"}
@@ -938,9 +976,12 @@ export default function CreateResumePage() {
                                     <>
                                         <button
                                             onClick={handleSubmit}
-                                            disabled={isSubmitting}
+                                            disabled={
+                                                isSubmitting
+                                                || (translateToEnglish && !!turnstileSiteKey && translateCaptchaToken === null)
+                                            }
                                             data-testid="create-submit"
-                                            className="w-full py-4 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-sm transition-all duration-200 flex items-center justify-center gap-3 tracking-wide shadow-lg shadow-stone-900/10"
+                                            className="w-full py-4 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 disabled:cursor-not-allowed text-white font-display text-lg rounded-sm transition-all duration-200 flex items-center justify-center gap-3 tracking-wide shadow-lg shadow-stone-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
                                         >
                                             {isSubmitting ? (
                                                 <>

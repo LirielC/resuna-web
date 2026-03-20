@@ -21,7 +21,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
-import { userApi, subscriptionApi } from "@/lib/api";
+import { userApi, subscriptionApi, resumeApi, ApiRequestError } from "@/lib/api";
+import { reauthenticateWithPopup } from "firebase/auth";
+import { googleProvider } from "@/lib/firebase";
 import { localResumeStorage, localCoverLetterStorage } from "@/lib/storage";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { THEME } from "@/lib/theme";
@@ -41,15 +43,19 @@ export default function AccountPage() {
         if (user) {
             userApi.getStats().then(setStats).catch(() => {});
             subscriptionApi.getCredits().then(setCredits).catch(() => {});
-            const all = localResumeStorage.getAll();
-            const sorted = [...all]
-                .sort((a, b) => {
-                    const da = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-                    const db = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-                    return db - da;
+            resumeApi
+                .getAll()
+                .then((all) => {
+                    const sorted = [...all]
+                        .sort((a, b) => {
+                            const da = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                            const db = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                            return db - da;
+                        })
+                        .slice(0, 3);
+                    setRecentResumes(sorted);
                 })
-                .slice(0, 3);
-            setRecentResumes(sorted);
+                .catch(() => setRecentResumes([]));
         }
     }, [user]);
 
@@ -63,15 +69,29 @@ export default function AccountPage() {
         setIsDeleting(true);
         setDeleteError(null);
         try {
+            await reauthenticateWithPopup(user, googleProvider);
+            await user.getIdToken(true);
+
             // Backend deletes Firebase Auth user via Admin SDK + all Firestore data
             await userApi.deleteAccount();
             localResumeStorage.clear();
             localCoverLetterStorage.clear();
+            if (typeof window !== "undefined") {
+                window.localStorage.removeItem(`resuna_resumes_cloud_migrated_${user.uid}`);
+            }
             // Sign out locally — Auth user was already deleted on the backend
             await signOut();
             router.push("/");
-        } catch (err) {
-            if (err instanceof Error) {
+        } catch (err: unknown) {
+            const code =
+                err && typeof err === "object" && "code" in err
+                    ? String((err as { code: string }).code)
+                    : "";
+            if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+                setDeleteError(t("account.deleteReauthCanceled"));
+            } else if (err instanceof ApiRequestError && err.errorCode === "REAUTH_REQUIRED") {
+                setDeleteError(t("account.deleteReauthRequired"));
+            } else if (err instanceof Error) {
                 setDeleteError(err.message);
             } else {
                 setDeleteError(t("common.error"));

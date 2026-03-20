@@ -47,12 +47,14 @@ public class DevResumeService implements ResumeService {
         Resume existingResume = getResumeById(id, userId);
 
         existingResume.setTitle(resumeUpdate.getTitle());
+        existingResume.setLanguage(resumeUpdate.getLanguage());
         existingResume.setPersonalInfo(resumeUpdate.getPersonalInfo());
         existingResume.setSummary(resumeUpdate.getSummary());
         existingResume.setExperience(resumeUpdate.getExperience());
         existingResume.setProjects(resumeUpdate.getProjects());
         existingResume.setEducation(resumeUpdate.getEducation());
         existingResume.setSkills(resumeUpdate.getSkills());
+        existingResume.setSkillGroups(resumeUpdate.getSkillGroups());
         existingResume.setCertifications(resumeUpdate.getCertifications());
         existingResume.setLanguages(resumeUpdate.getLanguages());
 

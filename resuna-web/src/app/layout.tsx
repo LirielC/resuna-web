@@ -1,13 +1,22 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
-const inter = Inter({
-  subsets: ["latin"],
+const dmSans = DM_Sans({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-sans",
   display: "swap",
-  variable: "--font-inter",
+  weight: ["400", "500", "700"],
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-serif",
+  display: "swap",
+  axes: ["SOFT", "WONK"],
+  weight: "variable",
 });
 
 export const metadata: Metadata = {
@@ -22,12 +31,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+    <html
+      lang="pt-BR"
+      className={`${dmSans.variable} ${fraunces.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-orange-200 selection:text-orange-900">
         <AuthProvider>
-          <LanguageProvider>
-            {children}
-          </LanguageProvider>
+          <LanguageProvider>{children}</LanguageProvider>
         </AuthProvider>
       </body>
     </html>

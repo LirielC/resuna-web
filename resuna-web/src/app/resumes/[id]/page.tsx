@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/Button";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { Badge } from "@/components/ui/Badge";
 import { resumeApi, atsApi, triggerDownload, ApiRequestError } from "@/lib/api";
+import TurnstileWrapper from "@/components/Turnstile";
 import { computeCompleteness } from "@/lib/completeness";
 import { maskPhoneBR } from "@/lib/validation";
 import type { Resume, Experience, Education, Project, Certification, Language } from "@/lib/types";
@@ -75,6 +76,10 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const [translateCaptchaToken, setTranslateCaptchaToken] = useState<string | null>(
+    turnstileSiteKey ? null : "",
+  );
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [showMobilePreview, setShowMobilePreview] = useState(false);
 
@@ -246,14 +251,23 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
         certifications,
         languages,
       });
-      const translated = await resumeApi.translateToEnglish(id);
+      const translated = await resumeApi.translateToEnglish(id, translateCaptchaToken || undefined);
+      setTranslateCaptchaToken(turnstileSiteKey ? null : "");
       // Open translated resume in editor
       router.push(`/resumes/${translated.id}`);
     } catch (err) {
+      setTranslateCaptchaToken(turnstileSiteKey ? null : "");
       if (err instanceof ApiRequestError && err.status === 403) {
-        setError("Você atingiu o limite de créditos diários. Seus créditos serão renovados à meia-noite.");
+        const msg = err.message.toLowerCase();
+        if (msg.includes("captcha") || msg.includes("verificação") || msg.includes("segurança")) {
+          setError(t("editor.translateCaptchaFailed"));
+        } else if (msg.includes("credit") || msg.includes("crédito") || msg.includes("limite")) {
+          setError(t("editor.translateCreditsExceeded"));
+        } else {
+          setError(err.message);
+        }
       } else {
-        setError(err instanceof Error ? err.message : "Falha ao traduzir. Tente novamente.");
+        setError(err instanceof Error ? err.message : t("editor.translateFailed"));
       }
       setIsTranslating(false);
     }
@@ -477,7 +491,7 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
                   variant="ghost"
                   size="sm"
                   onClick={handleTranslate}
-                  disabled={isTranslating}
+                  disabled={isTranslating || (!!turnstileSiteKey && !translateCaptchaToken)}
                   className="font-serif hover:bg-stone-200/50"
                   title="Traduzir para inglês"
                 >
@@ -491,6 +505,18 @@ export default function ResumeEditorPage({ params }: { params: Promise<{ id: str
                 </Button>
               </div>
             </div>
+
+            {turnstileSiteKey && (
+              <div className="mt-3 w-full max-w-md">
+                <p className="text-xs text-stone-500 mb-2 font-sans">{t("editor.translateCaptchaHint")}</p>
+                <TurnstileWrapper
+                  size="compact"
+                  onSuccess={(tok) => setTranslateCaptchaToken(tok)}
+                  onError={() => setTranslateCaptchaToken(null)}
+                  onExpire={() => setTranslateCaptchaToken(null)}
+                />
+              </div>
+            )}
 
             {error && (
               <div className="mt-3 p-3 bg-red-50 text-red-800 rounded-sm text-sm border-l-2 border-red-500 font-medium animate-fade-in-up">

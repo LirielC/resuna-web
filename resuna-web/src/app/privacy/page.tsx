@@ -114,12 +114,12 @@ export default function PrivacyPage() {
               Esta política está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
             </p>
 
-            <h2>2. Princípio: Local-First</h2>
+            <h2>2. Armazenamento de currículos</h2>
             <p>
-              O conteúdo dos seus currículos e cartas de apresentação <strong>não é enviado nem armazenado em nossos servidores</strong>. Esses dados ficam exclusivamente no <strong>localStorage do seu navegador</strong>, no seu dispositivo.
+              Quando você está <strong>autenticado</strong>, os seus <strong>currículos</strong> são sincronizados e armazenados no <strong>Google Cloud Firestore</strong>, associados ao seu identificador de conta (UID), para que possa acessá-los em qualquer dispositivo onde iniciar sessão.
             </p>
             <p>
-              Isso significa que nenhum colaborador do projeto, operador de servidor ou terceiro tem acesso ao conteúdo dos seus currículos — a menos que você o envie explicitamente para os recursos de IA.
+              O acesso aos currículos na nuvem é restrito à sua conta; o conteúdo só é processado em servidores quando você usa funcionalidades que o exigem (exportação, importação, análise ATS, IA, etc.), conforme descrito nas secções seguintes.
             </p>
 
             <h2>3. O Que Coletamos</h2>
@@ -159,11 +159,10 @@ export default function PrivacyPage() {
 
             <h3>3.4 Dados Não Coletados</h3>
             <ul>
-              <li>❌ Conteúdo dos seus currículos (armazenado apenas no seu navegador)</li>
-              <li>❌ Histórico de navegação ou comportamento fora do app</li>
-              <li>❌ Cookies de rastreamento ou publicidade</li>
-              <li>❌ Dados financeiros ou de pagamento (não há cobrança)</li>
-              <li>❌ Endereço IP completo (apenas hash truncado)</li>
+              <li>✕ Histórico de navegação ou comportamento fora do app</li>
+              <li>✕ Cookies de rastreamento ou publicidade</li>
+              <li>✕ Dados financeiros ou de pagamento (não há cobrança)</li>
+              <li>✕ Endereço IP completo (apenas hash truncado)</li>
             </ul>
 
             <h2>4. Como Usamos Suas Informações</h2>
@@ -179,7 +178,7 @@ export default function PrivacyPage() {
 
             <h3>5.1 OpenRouter API</h3>
             <p>
-              Os recursos de IA (refinamento de currículo, geração de carta de apresentação, tradução) enviam o conteúdo necessário — texto do currículo e/ou descrição da vaga — para a <strong>API OpenRouter</strong>, que roteia a requisição para modelos de linguagem abertos de múltiplos provedores. O processamento ocorre nos servidores da OpenRouter conforme seus próprios termos e política de privacidade.
+              Os recursos de IA (refinamento de currículo, tradução, etc.) enviam o conteúdo necessário — texto do currículo e/ou descrição da vaga — para a <strong>API OpenRouter</strong>, que roteia a requisição para modelos de linguagem abertos de múltiplos provedores. O processamento ocorre nos servidores da OpenRouter conforme seus próprios termos e política de privacidade.
             </p>
             <p>
               Não enviamos seu e-mail, nome ou qualquer dado de identificação junto com as requisições de IA.
@@ -197,11 +196,11 @@ export default function PrivacyPage() {
 
             <h2>6. O Que NÃO Fazemos</h2>
             <ul>
-              <li>❌ Não vendemos seus dados pessoais</li>
-              <li>❌ Não compartilhamos dados com anunciantes</li>
-              <li>❌ Não usamos seus dados para treinar modelos de IA</li>
-              <li>❌ Não enviamos e-mails de marketing ou newsletters</li>
-              <li>❌ Não acessamos o conteúdo dos seus currículos (ficam no seu navegador)</li>
+              <li>✕ Não vendemos seus dados pessoais</li>
+              <li>✕ Não compartilhamos dados com anunciantes</li>
+              <li>✕ Não usamos seus dados para treinar modelos de IA</li>
+              <li>✕ Não enviamos e-mails de marketing ou newsletters</li>
+              <li>✕ Não utilizamos o conteúdo dos seus currículos para publicidade nem o vendemos a terceiros</li>
             </ul>
 
             <h2>7. Armazenamento e Segurança</h2>
@@ -215,21 +214,22 @@ export default function PrivacyPage() {
 
             <h3>7.2 Dados no Seu Dispositivo</h3>
             <ul>
-              <li>Currículos e cartas ficam no <strong>localStorage</strong> do seu navegador</li>
-              <li>Você tem controle total: pode exportar (JSON) ou excluir a qualquer momento pelo app</li>
-              <li>Limpar os dados do navegador apaga seus currículos permanentemente</li>
+              <li>O aplicativo pode usar <strong>localStorage</strong> para preferências e dados auxiliares no navegador</li>
+              <li>Os currículos sincronizados na conta permanecem no Firestore até você os apagar ou eliminar a conta</li>
+              <li>Pode exportar currículos em JSON e gerir a conta pelo aplicativo</li>
+              <li>Limpar apenas o localStorage do navegador não apaga os currículos já guardados na sua conta na nuvem</li>
             </ul>
 
             <h3>7.3 Retenção</h3>
             <ul>
-              <li><strong>Conta ativa:</strong> dados de autenticação e resultados ATS mantidos enquanto a conta existir</li>
+              <li><strong>Conta ativa:</strong> dados de autenticação, currículos sincronizados na conta e resultados ATS mantidos enquanto a conta existir</li>
               <li><strong>Após exclusão da conta:</strong> dados do Firestore removidos em até 90 dias</li>
               <li><strong>Logs anonimizados:</strong> podem ser mantidos por período superior para fins de segurança e auditoria, pois não contêm dados pessoais identificáveis</li>
             </ul>
 
             <h2>8. Armazenamento Local (localStorage)</h2>
             <p>
-              O app utiliza o localStorage do navegador — não cookies — para armazenar seus currículos e cartas de apresentação. O localStorage não é transmitido ao servidor automaticamente e não é acessível por outros sites.
+              O app utiliza o localStorage do navegador — não cookies — para dados que permanecem no dispositivo (por exemplo, preferências e identificadores técnicos locais). O localStorage não é transmitido ao servidor automaticamente e não é acessível por outros sites.
             </p>
             <p>
               Você pode exportar seus dados a qualquer momento em formato JSON pelo aplicativo.

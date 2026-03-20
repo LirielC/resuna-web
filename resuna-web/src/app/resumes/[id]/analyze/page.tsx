@@ -177,7 +177,7 @@ export default function AnalyzePage({ params }: { params: Promise<{ id: string }
                     <Button
                       onClick={handleCritique}
                       disabled={captchaToken === null}
-                      className="!bg-stone-800 hover:!bg-stone-900 !text-[#F8F6F1] !px-8 !py-3 !rounded-xl disabled:!opacity-50"
+                      className="!bg-stone-800 hover:!bg-stone-900 !text-[#F8F6F1] !px-8 !py-3 !rounded-xl !shadow-lg !shadow-stone-900/15 disabled:!opacity-50 focus-visible:!ring-2 focus-visible:!ring-stone-600 focus-visible:!ring-offset-2"
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
                       {t('analyze.startEditorialReview')}

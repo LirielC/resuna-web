@@ -69,12 +69,14 @@ public class ProductionResumeService implements ResumeService {
         Resume existing = getResumeById(id, userId);
         
         existing.setTitle(resume.getTitle() != null ? resume.getTitle() : existing.getTitle());
+        existing.setLanguage(resume.getLanguage() != null ? resume.getLanguage() : existing.getLanguage());
         existing.setPersonalInfo(resume.getPersonalInfo() != null ? resume.getPersonalInfo() : existing.getPersonalInfo());
         existing.setSummary(resume.getSummary() != null ? resume.getSummary() : existing.getSummary());
         existing.setExperience(resume.getExperience() != null ? resume.getExperience() : existing.getExperience());
         existing.setProjects(resume.getProjects() != null ? resume.getProjects() : existing.getProjects());
         existing.setEducation(resume.getEducation() != null ? resume.getEducation() : existing.getEducation());
         existing.setSkills(resume.getSkills() != null ? resume.getSkills() : existing.getSkills());
+        existing.setSkillGroups(resume.getSkillGroups() != null ? resume.getSkillGroups() : existing.getSkillGroups());
         existing.setCertifications(resume.getCertifications() != null ? resume.getCertifications() : existing.getCertifications());
         existing.setLanguages(resume.getLanguages() != null ? resume.getLanguages() : existing.getLanguages());
         existing.setUpdatedAt(Instant.now());

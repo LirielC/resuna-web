@@ -5,24 +5,6 @@ import { FileText, Twitter, Github, Linkedin, Mail } from "lucide-react";
 
 export function Footer() {
   const footerLinks = {
-    Produto: [
-      { label: "Recursos", href: "/features" },
-      { label: "Preços", href: "/pricing" },
-      { label: "Modelos", href: "/templates" },
-      { label: "API", href: "/api" },
-    ],
-    Empresa: [
-      { label: "Sobre", href: "/about" },
-      { label: "Blog", href: "/blog" },
-      { label: "Carreiras", href: "/careers" },
-      { label: "Contato", href: "/contact" },
-    ],
-    Recursos: [
-      { label: "Central de Ajuda", href: "/help" },
-      { label: "Guia ATS", href: "/guide" },
-      { label: "Dicas de Currículo", href: "/tips" },
-      { label: "Exemplos", href: "/examples" },
-    ],
     Legal: [
       { label: "Privacidade", href: "/privacy" },
       { label: "Termos", href: "/terms" },
@@ -31,18 +13,16 @@ export function Footer() {
   };
 
   const socialLinks = [
-    { icon: Twitter, href: "https://twitter.com/resuna", label: "Twitter" },
-    { icon: Github, href: "https://github.com/resuna", label: "GitHub" },
-    { icon: Linkedin, href: "https://linkedin.com/company/resuna", label: "LinkedIn" },
-    { icon: Mail, href: "mailto:support@resuna.app", label: "Email" },
+    { icon: Twitter, href: "https://x.com/pythinkpad", label: "X" },
+    { icon: Github, href: "https://github.com/lirielc/resuna-web", label: "GitHub" },
   ];
 
   return (
     <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
       <div className="container-custom py-12 lg:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+        <div className="flex flex-col md:flex-row justify-between gap-12">
           {/* Brand */}
-          <div className="col-span-2">
+          <div className="max-w-sm">
             <Link href="/" className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <FileText className="w-4 h-4 text-white" />

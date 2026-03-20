@@ -147,6 +147,73 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     return response;
 }
 
+/** Pre–per-user-storage bucket only; must not stay populated or every new account on this browser inherits it. */
+const LEGACY_RESUMES_KEY = 'resuna_resumes';
+
+/** Once per user: import legacy `resuna_resumes` into `resuna_resumes_${uid}` if needed, then always drop legacy. */
+export async function migrateLocalResumesToServerOnce(firebaseUid: string): Promise<void> {
+    if (typeof window === 'undefined' || !firebaseUid) return;
+
+    const doneKey = `resuna_local_resume_migrated_${firebaseUid}`;
+    if (window.localStorage.getItem(doneKey)) return;
+
+    const userKey = `resuna_resumes_${firebaseUid}`;
+    let userList: Resume[];
+    try {
+        const raw = window.localStorage.getItem(userKey);
+        userList = raw ? (JSON.parse(raw) as Resume[]) : [];
+        if (!Array.isArray(userList)) userList = [];
+    } catch {
+        userList = [];
+    }
+
+    const clearLegacy = () => {
+        window.localStorage.removeItem(LEGACY_RESUMES_KEY);
+    };
+
+    if (userList.length > 0) {
+        clearLegacy();
+        window.localStorage.setItem(doneKey, '1');
+        return;
+    }
+
+    let legacy: unknown;
+    try {
+        const raw = window.localStorage.getItem(LEGACY_RESUMES_KEY);
+        if (!raw) {
+            window.localStorage.setItem(doneKey, '1');
+            return;
+        }
+        legacy = JSON.parse(raw);
+    } catch {
+        clearLegacy();
+        window.localStorage.setItem(doneKey, '1');
+        return;
+    }
+
+    if (!Array.isArray(legacy) || legacy.length === 0) {
+        clearLegacy();
+        window.localStorage.setItem(doneKey, '1');
+        return;
+    }
+
+    const valid = legacy.filter((item): item is Resume => {
+        if (!item || typeof item !== 'object') return false;
+        const r = item as Record<string, unknown>;
+        return typeof r.id === 'string' && typeof r.title === 'string';
+    });
+
+    if (valid.length === 0) {
+        clearLegacy();
+        window.localStorage.setItem(doneKey, '1');
+        return;
+    }
+
+    window.localStorage.setItem(userKey, JSON.stringify(valid));
+    clearLegacy();
+    window.localStorage.setItem(doneKey, '1');
+}
+
 // Resume API — backed by localStorage; export/AI operations POST data to backend
 export const resumeApi = {
     async getAll(): Promise<Resume[]> {
@@ -233,19 +300,22 @@ export const resumeApi = {
         return response.blob();
     },
 
-    // Translate resume to English — sends full resume in POST body, saves result to localStorage
-    async translateToEnglish(resumeId: string): Promise<Resume> {
+    // Translate resume to English — POST body + X-Captcha-Token (same guards as other AI routes when Turnstile enabled)
+    async translateToEnglish(resumeId: string, captchaToken?: string): Promise<Resume> {
         const resume = localResumeStorage.getById(resumeId);
         if (!resume) throw new Error('Resume not found');
 
         const token = await getAuthToken();
         if (!token) throw new Error('Not authenticated. Please sign in.');
 
+        const fingerprint = await getClientFingerprint();
         const response = await fetch(`${API_BASE_URL}/api/resumes/export/translate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
+                ...(fingerprint ? { 'X-Client-Fingerprint': fingerprint } : {}),
+                ...(captchaToken ? { 'X-Captcha-Token': captchaToken } : {}),
             },
             body: JSON.stringify(resume),
         });

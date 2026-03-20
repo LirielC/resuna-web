@@ -263,8 +263,7 @@ public class ResumeController {
         String userId = getCurrentUserId(request);
         String userEmail = getUserEmail(request);
 
-        // CAPTCHA not required here — user is authenticated via Firebase and credits are consumed below.
-        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request, false);
+        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request);
         if (guard != null) return guard;
 
         try {

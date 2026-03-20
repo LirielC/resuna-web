@@ -7,12 +7,13 @@ export function setStorageUser(userId: string | null): void {
     _currentUserId = userId;
 }
 
+/** Never use `resuna_resumes` without uid — that key is only for one-time legacy import (see api.ts). */
 function resumesKey(): string {
-    return _currentUserId ? `resuna_resumes_${_currentUserId}` : 'resuna_resumes';
+    return _currentUserId ? `resuna_resumes_${_currentUserId}` : 'resuna_resumes__logged_out';
 }
 
 function coverLettersKey(): string {
-    return _currentUserId ? `resuna_cover_letters_${_currentUserId}` : 'resuna_cover_letters';
+    return _currentUserId ? `resuna_cover_letters_${_currentUserId}` : 'resuna_cover_letters__logged_out';
 }
 
 function readJson<T>(key: string): T[] {

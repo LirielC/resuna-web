@@ -64,8 +64,6 @@ export function Header() {
     ]
     : [
       { href: "/#features", label: t("header.features") },
-      { href: "/pricing", label: t("header.pricing") },
-      { href: "/blog", label: t("header.blog") },
     ];
 
   return (
