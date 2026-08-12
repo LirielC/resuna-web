@@ -16,8 +16,8 @@ import org.springframework.stereotype.Component;
 import com.resuna.service.UserProfileService;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 // Registered inside Spring Security's filter chain via SecurityConfig.addFilterBefore().
 // FilterRegistrationBean disables standalone servlet registration.
@@ -31,7 +31,7 @@ public class AuthFilter implements Filter {
     // Public routes that don't require authentication.
     // Matched as exact path OR exact prefix + "/" to avoid accidental exposure
     // of future endpoints that share a common prefix (e.g. /api/authorization-*).
-    private static final List<String> PUBLIC_ROUTES = Arrays.asList(
+    private static final Set<String> PUBLIC_ROUTES = Set.of(
             "/api/auth/",
             "/api/health",
             "/error");
@@ -70,14 +70,17 @@ public class AuthFilter implements Filter {
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             logger.warn("Missing or invalid Authorization header for: {} {}", method, path);
-            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            httpResponse.setContentType("application/json");
-            httpResponse.getWriter()
-                    .write("{\"error\":\"Unauthorized\",\"message\":\"Missing or invalid authorization token\"}");
+            writeError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
+                    "Missing or invalid authorization token");
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token = authHeader.substring("Bearer ".length()).trim();
+        if (token.isEmpty()) {
+            writeError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED,
+                    "Missing or invalid authorization token");
+            return;
+        }
 
         try {
             FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
@@ -110,9 +113,7 @@ public class AuthFilter implements Filter {
                     decodedToken.getName());
 
             if (path.startsWith("/api/admin") && !isAdminRequestAllowed(decodedToken)) {
-                httpResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                httpResponse.setContentType("application/json");
-                httpResponse.getWriter().write("{\"error\":\"Access denied\"}");
+                writeError(httpResponse, HttpServletResponse.SC_FORBIDDEN, "Access denied");
                 return;
             }
 
@@ -120,9 +121,7 @@ public class AuthFilter implements Filter {
 
         } catch (FirebaseAuthException e) {
             logger.warn("Invalid Firebase token: {} for {} {}", e.getMessage(), method, path);
-            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            httpResponse.setContentType("application/json");
-            httpResponse.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Invalid or expired token\"}");
+            writeError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
         } finally {
             // Always clear the security context after the request to prevent thread-local leaks.
             SecurityContextHolder.clearContext();
@@ -152,5 +151,13 @@ public class AuthFilter implements Filter {
         }
         String email = decodedToken.getEmail();
         return email != null && superAdminEmail.equalsIgnoreCase(email);
+    }
+
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        String error = status == HttpServletResponse.SC_FORBIDDEN ? "Forbidden" : "Unauthorized";
+        response.getWriter().write("{\"error\":\"" + error + "\",\"message\":\"" + message + "\"}");
     }
 }

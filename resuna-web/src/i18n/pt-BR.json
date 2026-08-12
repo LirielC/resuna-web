@@ -26,6 +26,8 @@
     },
     "header": {
         "archives": "Arquivo",
+        "coverLetters": "Cartas de apresentação",
+        "credits": "Créditos",
         "features": "Recursos",
         "pricing": "Preços",
         "blog": "Blog",
@@ -375,6 +377,7 @@
         "minor": "Menor"
     },
     "editor": {
+        "sections": "Seções do currículo",
         "tabs": {
             "basics": "Dados Básicos",
             "experience": "Experiência",
@@ -401,8 +404,15 @@
         "edit": "Editar",
         "preview": "Visualizar",
         "livePreview": "Pré-visualização",
+        "template": "Modelo de currículo",
+        "templates": {
+            "classic": "Clássico",
+            "modern": "Moderno",
+            "compact": "Compacto"
+        },
         "atsOptimized": "Otimizado ATS",
         "atsScore": "Nota ATS: {{score}}%",
+        "completeness": "Completude",
         "basicsIntro": "Vamos começar com sua apresentação. Como você quer que o mundo te conheça?",
         "experienceIntro": "Registre sua jornada profissional. Foque no impacto, não apenas nas tarefas.",
         "projectsIntro": "Mostre suas criações. O que você construiu?",

@@ -1,18 +1,16 @@
 package com.resuna.controller;
 
-import com.resuna.exception.UnauthorizedException;
 import com.resuna.model.Resume;
 import com.resuna.model.UserSubscription;
 import com.resuna.service.AnalyticsService;
 import com.resuna.service.ExportService;
-import com.resuna.service.FeatureFlagsService;
 import com.resuna.service.PDFSecurityService;
 import com.resuna.service.ResumeImportService;
 import com.resuna.service.ResumeService;
 import com.resuna.service.ResumeTranslationService;
 import com.resuna.service.SubscriptionService;
-import com.resuna.service.TurnstileService;
 import com.resuna.util.SecurityUtils;
+import com.resuna.util.RequestIdentity;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -42,34 +40,28 @@ public class ResumeController {
     private final ResumeImportService resumeImportService;
     private final PDFSecurityService pdfSecurityService;
     private final ResumeTranslationService resumeTranslationService;
-    private final FeatureFlagsService featureFlagsService;
+    private final AiRequestGuardService aiRequestGuardService;
     private final SubscriptionService subscriptionService;
-    private final TurnstileService turnstileService;
     private final SecurityUtils securityUtils;
 
     public ResumeController(ResumeService resumeService, ExportService exportService,
             AnalyticsService analyticsService, ResumeImportService resumeImportService,
             PDFSecurityService pdfSecurityService, ResumeTranslationService resumeTranslationService,
-            FeatureFlagsService featureFlagsService, SubscriptionService subscriptionService,
-            TurnstileService turnstileService, SecurityUtils securityUtils) {
+            SubscriptionService subscriptionService, SecurityUtils securityUtils,
+            AiRequestGuardService aiRequestGuardService) {
         this.resumeService = resumeService;
         this.exportService = exportService;
         this.analyticsService = analyticsService;
         this.resumeImportService = resumeImportService;
         this.pdfSecurityService = pdfSecurityService;
         this.resumeTranslationService = resumeTranslationService;
-        this.featureFlagsService = featureFlagsService;
         this.subscriptionService = subscriptionService;
-        this.turnstileService = turnstileService;
+        this.aiRequestGuardService = aiRequestGuardService;
         this.securityUtils = securityUtils;
     }
 
     private String getCurrentUserId(HttpServletRequest request) {
-        Object userId = request.getAttribute("userId");
-        if (userId == null) {
-            throw new UnauthorizedException("User not authenticated");
-        }
-        return userId.toString();
+        return RequestIdentity.requireUserId(request);
     }
 
     @GetMapping
@@ -137,6 +129,8 @@ public class ResumeController {
     }
 
     private static final Set<String> ALLOWED_LOCALES = Set.of("pt-BR", "en", "pt");
+    private static final MediaType DOCX_MEDIA_TYPE = MediaType.parseMediaType(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> exportToPdf(
@@ -155,12 +149,7 @@ public class ResumeController {
                 "{\"resumeId\":\"" + id + "\"}",
                 securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment",
-                sanitizeFilename(resume.getTitle()) + ".pdf");
-
-        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        return fileResponse(pdfBytes, resume.getTitle(), ".pdf", MediaType.APPLICATION_PDF);
     }
 
     @GetMapping("/{id}/docx")
@@ -179,13 +168,7 @@ public class ResumeController {
                 "{\"resumeId\":\"" + id + "\"}",
                 securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
-        headers.setContentDispositionFormData("attachment",
-                sanitizeFilename(resume.getTitle()) + ".docx");
-
-        return ResponseEntity.ok().headers(headers).body(docxBytes);
+        return fileResponse(docxBytes, resume.getTitle(), ".docx", DOCX_MEDIA_TYPE);
     }
 
     /**
@@ -214,12 +197,7 @@ public class ResumeController {
                 "{\"source\":\"body\"}",
                 securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment",
-                sanitizeFilename(resume.getTitle()) + ".pdf");
-
-        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        return fileResponse(pdfBytes, resume.getTitle(), ".pdf", MediaType.APPLICATION_PDF);
     }
 
     /**
@@ -242,13 +220,7 @@ public class ResumeController {
                 "{\"source\":\"body\"}",
                 securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
-        headers.setContentDispositionFormData("attachment",
-                sanitizeFilename(resume.getTitle()) + ".docx");
-
-        return ResponseEntity.ok().headers(headers).body(docxBytes);
+        return fileResponse(docxBytes, resume.getTitle(), ".docx", DOCX_MEDIA_TYPE);
     }
 
     /**
@@ -263,7 +235,7 @@ public class ResumeController {
         String userId = getCurrentUserId(request);
         String userEmail = getUserEmail(request);
 
-        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request);
+        ResponseEntity<?> guard = aiRequestGuardService.check(userId, userEmail, request);
         if (guard != null) return guard;
 
         try {
@@ -273,7 +245,7 @@ public class ResumeController {
                 translatedResume.setTitle(originalTitle + " (English)");
             }
 
-            boolean consumed = consumeAiCredits(userId, userEmail, request);
+            boolean consumed = aiRequestGuardService.consumeCredit(userId, userEmail, request);
             if (!consumed) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Insufficient credits"));
@@ -324,16 +296,10 @@ public class ResumeController {
         String userEmail = getUserEmail(request);
 
         // Guard: feature flags + credits only (no CAPTCHA — import is data extraction, not AI generation)
-        if (!featureFlagsService.getFlags(userId).isAiEnabled()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Feature disabled for your account"));
-        }
         String ipAddress = securityUtils.getSecureClientIp(request);
         String fingerprint = securityUtils.getClientFingerprint(request);
-        if (!subscriptionService.canUseAIFeatures(userId, userEmail, ipAddress, fingerprint)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Insufficient credits. Please purchase more to continue."));
-        }
+        ResponseEntity<?> guard = aiRequestGuardService.check(userId, userEmail, request, false);
+        if (guard != null) return guard;
 
         // Validate file
         if (file == null || file.isEmpty()) {
@@ -372,7 +338,7 @@ public class ResumeController {
             // Use AI to extract structured resume data
             Map<String, Object> extractedData = resumeImportService.extractResumeData(file);
 
-            boolean consumed = consumeAiCredits(userId, userEmail, request);
+            boolean consumed = aiRequestGuardService.consumeCredit(userId, userEmail, request);
             if (!consumed) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Insufficient credits"));
@@ -414,7 +380,7 @@ public class ResumeController {
         String userId = getCurrentUserId(request);
         String userEmail = getUserEmail(request);
 
-        ResponseEntity<?> guard = checkAiGuards(userId, userEmail, request);
+        ResponseEntity<?> guard = aiRequestGuardService.check(userId, userEmail, request);
         if (guard != null) return guard;
 
         try {
@@ -430,7 +396,7 @@ public class ResumeController {
             translatedResume.setId(null);
             Resume savedTranslatedResume = resumeService.createResume(translatedResume, userId);
 
-            boolean consumed = consumeAiCredits(userId, userEmail, request);
+            boolean consumed = aiRequestGuardService.consumeCredit(userId, userEmail, request);
             if (!consumed) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Insufficient credits"));
@@ -471,57 +437,21 @@ public class ResumeController {
         }
     }
 
-    /**
-     * Guard for AI-powered routes: feature flags → credits → CAPTCHA (required when enabled).
-     * Returns a non-null error ResponseEntity if the request should be rejected, null if allowed.
-     * Captcha token is read from the X-Captcha-Token header.
-     */
-    private ResponseEntity<?> checkAiGuards(String userId, String userEmail, HttpServletRequest request) {
-        return checkAiGuards(userId, userEmail, request, true);
-    }
-
-    /** Same as checkAiGuards but optionally skips CAPTCHA verification. */
-    private ResponseEntity<?> checkAiGuards(String userId, String userEmail, HttpServletRequest request, boolean requireCaptcha) {
-        if (!featureFlagsService.getFlags(userId).isAiEnabled()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Feature disabled for your account"));
-        }
-
-        String ipAddress = securityUtils.getSecureClientIp(request);
-        String fingerprint = securityUtils.getClientFingerprint(request);
-
-        if (!subscriptionService.canUseAIFeatures(userId, userEmail, ipAddress, fingerprint)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Insufficient credits. Please purchase more to continue."));
-        }
-
-        if (requireCaptcha) {
-            String captchaToken = request.getHeader("X-Captcha-Token");
-            if (!turnstileService.verify(captchaToken, ipAddress)) {
-                logger.warn("🚨 [SECURITY] CAPTCHA verification failed for user {} on AI route", userId);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Verificação de segurança obrigatória. Complete o CAPTCHA e tente novamente."));
-            }
-        }
-
-        return null; // all checks passed
-    }
-
-    private boolean consumeAiCredits(String userId, String userEmail, HttpServletRequest request) {
-        String ipAddress = securityUtils.getSecureClientIp(request);
-        String fingerprint = securityUtils.getClientFingerprint(request);
-        return subscriptionService.consumeCredits(userId, 1, userEmail, ipAddress, fingerprint);
-    }
-
     private String getUserEmail(HttpServletRequest request) {
-        Object email = request.getAttribute("userEmail");
-        return email != null ? email.toString() : null;
+        return RequestIdentity.userEmail(request);
     }
 
     private String sanitizeFilename(String filename) {
         if (filename == null)
             return "resume";
         return filename.replaceAll("[^a-zA-Z0-9-_]", "_");
+    }
+
+    private ResponseEntity<byte[]> fileResponse(byte[] content, String title, String extension, MediaType mediaType) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.setContentDispositionFormData("attachment", sanitizeFilename(title) + extension);
+        return ResponseEntity.ok().headers(headers).body(content);
     }
 
     private void logActivitySafely(String userId, String action, String details, String ipAddress, String userAgent) {

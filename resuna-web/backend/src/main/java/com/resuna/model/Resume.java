@@ -27,22 +27,29 @@ public class Resume {
     private String summary;
 
     @Valid
+    @Size(max = 20, message = "Experience list must not exceed 20 entries")
     private List<Experience> experience;
 
     @Valid
+    @Size(max = 30, message = "Project list must not exceed 30 entries")
     private List<Project> projects;
 
     @Valid
+    @Size(max = 10, message = "Education list must not exceed 10 entries")
     private List<Education> education;
 
+    @Size(max = 100, message = "Skill list must not exceed 100 entries")
     private List<@Size(max = 100, message = "Each skill must not exceed 100 characters") String> skills;
 
+    @Size(max = 20, message = "Skill group list must not exceed 20 entries")
     private List<SkillGroup> skillGroups;
 
     @Valid
+    @Size(max = 30, message = "Certification list must not exceed 30 entries")
     private List<Certification> certifications;
 
     @Valid
+    @Size(max = 20, message = "Language list must not exceed 20 entries")
     private List<Language> languages;
 
     private Instant createdAt;
@@ -176,7 +183,8 @@ public class Resume {
 
     public static class SkillGroup {
         private String category;
-        private List<String> items;
+        @Size(max = 100, message = "Skill group must not exceed 100 items")
+        private List<@Size(max = 100, message = "Each skill must not exceed 100 characters") String> items;
 
         public SkillGroup() {}
 
@@ -293,6 +301,7 @@ public class Resume {
 
         private boolean current;
 
+        @Size(max = 30, message = "Experience must not exceed 30 bullet points")
         private List<@Size(max = 1000, message = "Each bullet point must not exceed 1000 characters") String> bullets;
 
         public Experience() {
@@ -362,6 +371,7 @@ public class Resume {
         @Size(max = 2000, message = "Project description must not exceed 2000 characters")
         private String description;
 
+        @Size(max = 30, message = "Project must not exceed 30 technologies")
         private List<@Size(max = 100, message = "Each technology must not exceed 100 characters") String> technologies;
 
         @Size(max = 500, message = "Project URL must not exceed 500 characters")
@@ -373,6 +383,7 @@ public class Resume {
         @Size(max = 20, message = "End date must not exceed 20 characters")
         private String endDate;
 
+        @Size(max = 30, message = "Project must not exceed 30 bullet points")
         private List<@Size(max = 1000, message = "Each bullet point must not exceed 1000 characters") String> bullets;
 
         public Project() {
