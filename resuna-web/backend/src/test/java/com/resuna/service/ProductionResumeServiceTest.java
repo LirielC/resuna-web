@@ -50,6 +50,13 @@ class ProductionResumeServiceTest {
     class CreateTests {
 
         @Test
+        @DisplayName("Rejects missing authenticated user")
+        void create_withoutUser_rejects() {
+            assertThrows(UnauthorizedException.class, () -> service.createResume(new Resume(), " "));
+            verifyNoInteractions(repository);
+        }
+
+        @Test
         @DisplayName("Sets userId from authenticated context, not from request body")
         void create_overridesUserIdFromBody() throws Exception {
             Resume input = new Resume();
@@ -96,6 +103,13 @@ class ProductionResumeServiceTest {
     @Nested
     @DisplayName("getResumeById — IDOR Protection")
     class ReadTests {
+
+        @Test
+        @DisplayName("Rejects missing authenticated user before repository access")
+        void read_withoutUser_rejects() {
+            assertThrows(UnauthorizedException.class, () -> service.getResumeById("res-1", null));
+            verifyNoInteractions(repository);
+        }
 
         @Test
         @DisplayName("Owner can access their own resume")

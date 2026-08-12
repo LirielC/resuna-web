@@ -379,14 +379,23 @@ public class ResumeTranslationService {
     private static final Logger logger = LoggerFactory.getLogger(ResumeTranslationService.class);
     private final OpenRouterService openRouterService;
     private final ObjectMapper objectMapper;
+    private final ResumeTranslationResponseParser responseParser;
 
     @Autowired(required = false)
     @Lazy
     private GeminiService geminiService;
 
-    public ResumeTranslationService(OpenRouterService openRouterService, ObjectMapper objectMapper) {
+    @Autowired
+    public ResumeTranslationService(OpenRouterService openRouterService, ObjectMapper objectMapper,
+            ResumeTranslationResponseParser responseParser) {
         this.openRouterService = openRouterService;
         this.objectMapper = objectMapper;
+        this.responseParser = responseParser;
+    }
+
+    /** Compatibility constructor for isolated unit tests. */
+    public ResumeTranslationService(OpenRouterService openRouterService, ObjectMapper objectMapper) {
+        this(openRouterService, objectMapper, new ResumeTranslationResponseParser());
     }
 
     /**
@@ -493,7 +502,7 @@ public class ResumeTranslationService {
             response = openRouterService.generateJson(prompt);
         }
 
-        String jsonStr = extractJSON(response);
+        String jsonStr = responseParser.extractObject(response);
         // The response is a JSON array, not object — find '[' instead of '{'
         int arrStart = jsonStr.indexOf('[');
         int arrEnd   = jsonStr.lastIndexOf(']');
@@ -608,7 +617,7 @@ public class ResumeTranslationService {
             logger.debug("AI Translation response received (length: {})", aiResponse.length());
 
             // Extract JSON from response
-            String jsonStr = extractJSON(aiResponse);
+            String jsonStr = responseParser.extractObject(aiResponse);
 
             logger.debug("Extracted JSON length: {}", jsonStr.length());
 
@@ -646,29 +655,6 @@ public class ResumeTranslationService {
                 e.getMessage(), aiResponse != null ? aiResponse.length() : 0);
             throw new IOException("Failed to translate resume content into valid English JSON", e);
         }
-    }
-
-    private String extractJSON(String text) {
-        // Remove markdown code blocks if present
-        text = text.trim();
-        if (text.startsWith("```json")) {
-            text = text.substring(7);
-        } else if (text.startsWith("```")) {
-            text = text.substring(3);
-        }
-        if (text.endsWith("```")) {
-            text = text.substring(0, text.length() - 3);
-        }
-
-        // Find first { and last }
-        int start = text.indexOf('{');
-        int end = text.lastIndexOf('}');
-
-        if (start >= 0 && end > start) {
-            return text.substring(start, end + 1);
-        }
-
-        return text.trim();
     }
 
     private boolean isEffectivelyUnchanged(Resume original, Resume translated) {

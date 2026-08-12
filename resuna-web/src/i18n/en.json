@@ -24,6 +24,8 @@
     },
     "header": {
         "archives": "Archives",
+        "coverLetters": "Cover letters",
+        "credits": "Credits",
         "features": "Features",
         "pricing": "Pricing",
         "blog": "Blog",
@@ -373,6 +375,7 @@
         "minor": "Minor"
     },
     "editor": {
+        "sections": "Resume sections",
         "tabs": {
             "basics": "The Basics",
             "experience": "Experience",
@@ -399,8 +402,15 @@
         "edit": "Edit",
         "preview": "Preview",
         "livePreview": "Live Preview",
+        "template": "Resume template",
+        "templates": {
+            "classic": "Classic",
+            "modern": "Modern",
+            "compact": "Compact"
+        },
         "atsOptimized": "ATS Optimized",
         "atsScore": "ATS Score: {{score}}%",
+        "completeness": "Completeness",
         "basicsIntro": "Let's start with your introduction. How do you want the world to know you?",
         "experienceIntro": "Chronicle your professional journey. Focus on impact, not just duties.",
         "projectsIntro": "Showcase your craftsmanship. What have you built or created?",

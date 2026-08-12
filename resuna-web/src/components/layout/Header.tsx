@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -13,6 +13,9 @@ import {
   User,
   FileStack,
   Shield,
+  BarChart3,
+  Mail,
+  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -21,6 +24,7 @@ export function Header() {
   const { user, loading, isAdmin, signOut } = useAuth();
   const { t } = useTranslation();
   const router = useRouter();
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -58,9 +62,11 @@ export function Header() {
 
 
 
-  const navLinks = user
+  const navLinks: Array<{ href: string; label: string; icon?: LucideIcon }> = user
     ? [
-      { href: "/resumes", label: t("header.archives") },
+      { href: "/resumes", label: t("header.myResumes"), icon: FileStack },
+      { href: "/cover-letters", label: t("header.coverLetters"), icon: Mail },
+      { href: "/billing", label: t("header.credits"), icon: BarChart3 },
     ]
     : [
       { href: "/#features", label: t("header.features") },
@@ -95,7 +101,11 @@ export function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm font-medium text-stone-600 hover:text-orange-600 transition-colors dark:text-stone-400 dark:hover:text-orange-400"
+                  aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
+                  className={`text-sm font-medium transition-colors dark:text-stone-400 dark:hover:text-orange-400 ${pathname === link.href || pathname.startsWith(`${link.href}/`)
+                    ? "text-orange-700 dark:text-orange-400"
+                    : "text-stone-600 hover:text-orange-600"
+                    }`}
                 >
                   {link.label}
                 </Link>
@@ -271,8 +281,13 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block py-2 text-base font-medium text-stone-700 hover:text-orange-600 dark:text-stone-200"
+                  aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-base font-medium ${pathname === link.href || pathname.startsWith(`${link.href}/`)
+                    ? "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
+                    : "text-stone-700 hover:bg-stone-100 hover:text-orange-600 dark:text-stone-200 dark:hover:bg-stone-800"
+                    }`}
                 >
+                  {link.icon && <link.icon className="h-4 w-4" aria-hidden="true" />}
                   {link.label}
                 </Link>
               ))}

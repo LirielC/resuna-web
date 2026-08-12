@@ -149,7 +149,7 @@ public class ExportService {
                     List<ContactPart> contactParts = new ArrayList<>();
 
                     if (info.getPhone() != null && !info.getPhone().isEmpty()) {
-                        String whatsappNumber = formatWhatsAppNumber(info.getPhone());
+                        String whatsappNumber = ResumeExportLinkFormatter.whatsappNumber(info.getPhone());
                         contactParts.add(new ContactPart(info.getPhone(), "https://wa.me/" + whatsappNumber));
                     }
                     if (info.getEmail() != null && !info.getEmail().isEmpty()) {
@@ -158,19 +158,19 @@ public class ExportService {
                     if (info.getLinkedin() != null && !info.getLinkedin().isEmpty()) {
                         String displayLinkedin = info.getLinkedin().replace("https://", "").replace("http://", "")
                                 .replace("www.", "");
-                        String fullUrl = sanitizeUrl(info.getLinkedin());
+                        String fullUrl = ResumeExportLinkFormatter.sanitizeUrl(info.getLinkedin());
                         contactParts.add(new ContactPart(displayLinkedin, fullUrl));
                     }
                     if (info.getGithub() != null && !info.getGithub().isEmpty()) {
                         String displayGithub = info.getGithub().replace("https://", "").replace("http://", "")
                                 .replace("www.", "");
-                        String fullUrl = sanitizeUrl(info.getGithub());
+                        String fullUrl = ResumeExportLinkFormatter.sanitizeUrl(info.getGithub());
                         contactParts.add(new ContactPart(displayGithub, fullUrl));
                     }
                     if (info.getWebsite() != null && !info.getWebsite().isEmpty()) {
                         String displayWebsite = info.getWebsite().replace("https://", "").replace("http://", "")
                                 .replace("www.", "");
-                        String fullUrl = sanitizeUrl(info.getWebsite());
+                        String fullUrl = ResumeExportLinkFormatter.sanitizeUrl(info.getWebsite());
                         contactParts.add(new ContactPart(displayWebsite, fullUrl));
                     }
 
@@ -317,7 +317,7 @@ public class ExportService {
 
                         String name = safeString(proj.getName());
                         String dateRange = formatDateRange(proj.getStartDate(), proj.getEndDate(), false, locale);
-                        String projUrl = sanitizeUrl(proj.getUrl());
+                        String projUrl = ResumeExportLinkFormatter.sanitizeUrl(proj.getUrl());
 
                         // Project name — bold, left-aligned
                         currentContentStream.get().beginText();
@@ -534,7 +534,7 @@ public class ExportService {
                         currentContentStream.get().endText();
 
                         // URL right-aligned on same line (blue, clickable)
-                        String certUrl = sanitizeUrl(cert.getUrl());
+                        String certUrl = ResumeExportLinkFormatter.sanitizeUrl(cert.getUrl());
                         if (certUrl != null) {
                             String displayUrl = cert.getUrl().trim()
                                     .replaceFirst("(?i)^https?://", "").replaceFirst("^www\\.", "");
@@ -788,41 +788,6 @@ public class ExportService {
      * "5511987654321" → "5511987654321"
      * "+1 555 123 4567" → "15551234567" (non-BR number preserved)
      */
-    private String formatWhatsAppNumber(String phone) {
-        if (phone == null || phone.isEmpty())
-            return "";
-
-        // Check if number has explicit + prefix before stripping
-        boolean hasPlus = phone.trim().startsWith("+");
-
-        // Remove all non-digit characters
-        String digits = phone.replaceAll("[^0-9]", "");
-
-        if (digits.isEmpty())
-            return "";
-
-        if (hasPlus) {
-            // Number already has international prefix (e.g. +55, +1), use as-is
-            return digits;
-        }
-
-        if (digits.startsWith("55") && digits.length() >= 12) {
-            // Already has Brazil country code (55 + 2-digit DDD + 8-9 digit number)
-            return digits;
-        }
-
-        // Brazilian number without country code — prepend 55
-        return "55" + digits;
-    }
-
-    private static String sanitizeUrl(String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        String trimmed = raw.trim();
-        if (trimmed.matches("(?i)^https?://.*")) return trimmed;
-        if (trimmed.matches("(?i)^mailto:.*") || trimmed.matches("(?i)^tel:.*")) return trimmed;
-        if (!trimmed.contains("://")) return "https://" + trimmed;
-        return null;
-    }
 
     // ── Helper class for contact parts with optional links ──────────────
 
@@ -896,7 +861,7 @@ public class ExportService {
                 if (info.getPhone() != null && !info.getPhone().isEmpty()) {
                     if (!first)
                         addDocxSeparator(contactPara);
-                    String whatsappNumber = formatWhatsAppNumber(info.getPhone());
+                    String whatsappNumber = ResumeExportLinkFormatter.whatsappNumber(info.getPhone());
                     addDocxLink(contactPara, info.getPhone(), "https://wa.me/" + whatsappNumber);
                     first = false;
                 }

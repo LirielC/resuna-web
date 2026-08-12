@@ -22,6 +22,8 @@ export interface Resume {
     updatedAt?: string;
 }
 
+export type ResumeTemplate = 'classic' | 'modern' | 'compact';
+
 export interface PersonalInfo {
     fullName: string;
     email: string;
