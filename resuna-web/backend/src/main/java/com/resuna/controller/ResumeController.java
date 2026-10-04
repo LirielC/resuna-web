@@ -4,13 +4,16 @@ import com.resuna.model.Resume;
 import com.resuna.model.UserSubscription;
 import com.resuna.service.AnalyticsService;
 import com.resuna.service.AiRequestGuardService;
+import com.resuna.service.DailyResumeQuotaService;
 import com.resuna.service.ExportService;
 import com.resuna.service.PDFSecurityService;
 import com.resuna.service.ResumeImportService;
+import com.resuna.service.ResumePageLimitException;
 import com.resuna.service.ResumeService;
 import com.resuna.service.ResumeTranslationService;
 import com.resuna.service.SubscriptionService;
 import com.resuna.service.TypstRendererService;
+import com.resuna.repository.DailyResumeQuotaRepository;
 import com.resuna.util.SecurityUtils;
 import com.resuna.util.RequestIdentity;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,12 +49,14 @@ public class ResumeController {
     private final SubscriptionService subscriptionService;
     private final SecurityUtils securityUtils;
     private final TypstRendererService typstRendererService;
+    private final DailyResumeQuotaService dailyResumeQuotaService;
 
     public ResumeController(ResumeService resumeService, ExportService exportService,
             AnalyticsService analyticsService, ResumeImportService resumeImportService,
             PDFSecurityService pdfSecurityService, ResumeTranslationService resumeTranslationService,
             SubscriptionService subscriptionService, SecurityUtils securityUtils,
-            AiRequestGuardService aiRequestGuardService, TypstRendererService typstRendererService) {
+            AiRequestGuardService aiRequestGuardService, TypstRendererService typstRendererService,
+            DailyResumeQuotaService dailyResumeQuotaService) {
         this.resumeService = resumeService;
         this.exportService = exportService;
         this.analyticsService = analyticsService;
@@ -62,6 +67,7 @@ public class ResumeController {
         this.aiRequestGuardService = aiRequestGuardService;
         this.securityUtils = securityUtils;
         this.typstRendererService = typstRendererService;
+        this.dailyResumeQuotaService = dailyResumeQuotaService;
     }
 
     private String getCurrentUserId(HttpServletRequest request) {
@@ -77,10 +83,12 @@ public class ResumeController {
     }
 
     @PostMapping
-    public ResponseEntity<Resume> createResume(
+    public ResponseEntity<?> createResume(
             @Valid @RequestBody Resume resume,
             HttpServletRequest request) throws ExecutionException, InterruptedException {
         String userId = getCurrentUserId(request);
+        ResponseEntity<?> quotaError = reserveResumeQuota(userId, false);
+        if (quotaError != null) return quotaError;
         Resume createdResume = resumeService.createResume(resume, userId);
 
         // Log activity (DO NOT log resume title - may contain PII)
@@ -89,6 +97,24 @@ public class ResumeController {
                 securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         return ResponseEntity.status(HttpStatus.CREATED).body(createdResume);
+    }
+
+    @PostMapping("/quota/reserve")
+    public ResponseEntity<?> reserveNewResumeQuota(HttpServletRequest request) {
+        ResponseEntity<?> quotaError = reserveResumeQuota(getCurrentUserId(request), false);
+        return quotaError == null ? ResponseEntity.noContent().build() : quotaError;
+    }
+
+    private ResponseEntity<?> reserveResumeQuota(String userId, boolean translated) {
+        DailyResumeQuotaRepository.Limit limit = dailyResumeQuotaService.reserve(userId, translated);
+        if (limit == DailyResumeQuotaRepository.Limit.NONE) return null;
+        String code = limit == DailyResumeQuotaRepository.Limit.TRANSLATIONS
+                ? "DAILY_TRANSLATION_LIMIT" : "DAILY_RESUME_LIMIT";
+        String message = limit == DailyResumeQuotaRepository.Limit.TRANSLATIONS
+                ? "Você já traduziu 4 currículos hoje. Tente novamente após a virada do dia UTC."
+                : "Você já criou 5 currículos hoje. Tente novamente após a virada do dia UTC.";
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of("errorCode", code, "message", message));
     }
 
     @GetMapping("/{id}")
@@ -137,7 +163,7 @@ public class ResumeController {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
     @GetMapping("/{id}/pdf")
-    public ResponseEntity<byte[]> exportToPdf(
+    public ResponseEntity<?> exportToPdf(
             @PathVariable String id,
             @RequestParam(value = "locale", defaultValue = "pt-BR") String locale,
             HttpServletRequest request) throws Exception {
@@ -148,6 +174,11 @@ public class ResumeController {
         logger.info("Exporting PDF for resume ID: {} with locale: {} for user: {}", id, locale, userId);
         Resume resume = resumeService.getResumeById(id, userId);
         byte[] pdfBytes = exportService.exportToPdf(resume, locale);
+        try {
+            exportService.validatePdfPageLimit(pdfBytes);
+        } catch (ResumePageLimitException e) {
+            return pageLimitResponse(e);
+        }
 
         analyticsService.logActivity(userId, null, "EXPORT_PDF",
                 "{\"resumeId\":\"" + id + "\"}",
@@ -181,7 +212,7 @@ public class ResumeController {
      * POST /api/resumes/export/pdf?locale=pt-BR
      */
     @PostMapping("/export/pdf")
-    public ResponseEntity<byte[]> exportBodyToPdf(
+    public ResponseEntity<?> exportBodyToPdf(
             @RequestBody Resume resume,
             @RequestParam(value = "locale", defaultValue = "pt-BR") String locale,
             HttpServletRequest request) throws Exception {
@@ -196,6 +227,11 @@ public class ResumeController {
         String userId = getCurrentUserId(request);
         logger.info("Exporting PDF from body with locale: {} for user: {}", effectiveLocale, userId);
         byte[] pdfBytes = exportService.exportToPdf(resume, effectiveLocale);
+        try {
+            exportService.validatePdfPageLimit(pdfBytes);
+        } catch (ResumePageLimitException e) {
+            return pageLimitResponse(e);
+        }
 
         logActivitySafely(userId, "EXPORT_PDF",
                 "{\"source\":\"body\"}",
@@ -204,17 +240,26 @@ public class ResumeController {
         return fileResponse(pdfBytes, resume.getTitle(), ".pdf", MediaType.APPLICATION_PDF);
     }
 
+    private ResponseEntity<?> pageLimitResponse(ResumePageLimitException e) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(Map.of("errorCode", "RESUME_PAGE_LIMIT", "message", e.getMessage()));
+    }
+
     @PostMapping("/export/typst")
-    public ResponseEntity<byte[]> exportToTypst(
+    public ResponseEntity<?> exportToTypst(
             @Valid @RequestBody Resume resume,
             @RequestParam(value = "theme", defaultValue = "classic") String theme,
             HttpServletRequest request) {
         String userId = getCurrentUserId(request);
         try {
             byte[] pdf = typstRendererService.render(resume, theme);
+            exportService.validatePdfPageLimit(pdf);
             logActivitySafely(userId, "EXPORT_TYPST", "{\"source\":\"body\"}",
                     securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
             return fileResponse(pdf, resume.getTitle(), ".pdf", MediaType.APPLICATION_PDF);
+        } catch (ResumePageLimitException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("errorCode", "RESUME_PAGE_LIMIT", "message", e.getMessage()));
         } catch (Exception e) {
             logger.warn("Typst export failed", e);
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
@@ -265,6 +310,9 @@ public class ResumeController {
             if (originalTitle != null && !originalTitle.contains("(English)")) {
                 translatedResume.setTitle(originalTitle + " (English)");
             }
+
+            ResponseEntity<?> quotaError = reserveResumeQuota(userId, true);
+            if (quotaError != null) return quotaError;
 
             boolean consumed = aiRequestGuardService.consumeCredit(userId, userEmail, request);
             if (!consumed) {
@@ -413,6 +461,9 @@ public class ResumeController {
             if (originalTitle != null && !originalTitle.contains("(English)")) {
                 translatedResume.setTitle(originalTitle + " (English)");
             }
+
+            ResponseEntity<?> quotaError = reserveResumeQuota(userId, true);
+            if (quotaError != null) return quotaError;
 
             translatedResume.setId(null);
             Resume savedTranslatedResume = resumeService.createResume(translatedResume, userId);

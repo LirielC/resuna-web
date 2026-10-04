@@ -28,10 +28,12 @@ import com.resuna.model.Resume;
 import com.resuna.model.TranslateRequest;
 import com.resuna.model.UserSubscription;
 import com.resuna.service.FeatureFlagsService;
+import com.resuna.service.DailyResumeQuotaService;
 import com.resuna.service.OpenRouterService;
 import com.resuna.service.ResumeService;
 import com.resuna.service.SubscriptionService;
 import com.resuna.service.TurnstileService;
+import com.resuna.repository.DailyResumeQuotaRepository;
 import com.resuna.util.SecurityUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,6 +55,7 @@ public class AIController {
     private final SecurityUtils securityUtils;
     private final TurnstileService turnstileService;
     private final ObjectMapper objectMapper;
+    private final DailyResumeQuotaService dailyResumeQuotaService;
 
     public AIController(OpenRouterService aiService,
             ResumeService resumeService,
@@ -60,7 +63,8 @@ public class AIController {
             FeatureFlagsService featureFlagsService,
             SecurityUtils securityUtils,
             TurnstileService turnstileService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            DailyResumeQuotaService dailyResumeQuotaService) {
         this.aiService = aiService;
         this.resumeService = resumeService;
         this.subscriptionService = subscriptionService;
@@ -68,6 +72,7 @@ public class AIController {
         this.securityUtils = securityUtils;
         this.turnstileService = turnstileService;
         this.objectMapper = objectMapper;
+        this.dailyResumeQuotaService = dailyResumeQuotaService;
     }
 
     private String getCurrentUserId(HttpServletRequest request) {
@@ -327,6 +332,17 @@ public class AIController {
                     ? request.getResume()
                     : resumeService.getResumeById(request.getResumeId(), userId);
             Resume translatedResume = aiService.translateResume(originalResume, request.getTargetLanguage());
+
+            DailyResumeQuotaRepository.Limit quotaLimit = dailyResumeQuotaService.reserve(userId, true);
+            if (quotaLimit != DailyResumeQuotaRepository.Limit.NONE) {
+                String code = quotaLimit == DailyResumeQuotaRepository.Limit.TRANSLATIONS
+                        ? "DAILY_TRANSLATION_LIMIT" : "DAILY_RESUME_LIMIT";
+                String message = quotaLimit == DailyResumeQuotaRepository.Limit.TRANSLATIONS
+                        ? "Você já traduziu 4 currículos hoje. Tente novamente após a virada do dia UTC."
+                        : "Você já criou 5 currículos hoje. Tente novamente após a virada do dia UTC.";
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(Map.of("errorCode", code, "message", message));
+            }
 
             translatedResume.setId(null); // client will assign UUID
             translatedResume.setUserId(userId);

@@ -2,6 +2,7 @@ package com.resuna.service;
 
 import com.resuna.model.Resume;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
@@ -26,6 +27,8 @@ import java.util.List;
 
 @Service
 public class ExportService {
+
+    private static final int MAX_RESUME_PAGES = 2;
 
     private static final Logger logger = LoggerFactory.getLogger(ExportService.class);
 
@@ -589,6 +592,14 @@ public class ExportService {
 
             document.save(outputStream);
             return outputStream.toByteArray();
+        }
+    }
+
+    public void validatePdfPageLimit(byte[] pdfBytes) throws IOException {
+        try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+            if (document.getNumberOfPages() > MAX_RESUME_PAGES) {
+                throw new ResumePageLimitException();
+            }
         }
     }
 

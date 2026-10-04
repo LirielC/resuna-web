@@ -3,6 +3,7 @@ package com.resuna.service;
 import com.resuna.model.Resume;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,6 +30,29 @@ class ExportServiceTest {
     @BeforeEach
     void setUp() {
         exportService = new ExportService();
+    }
+
+    @Test
+    @DisplayName("PDF export page policy accepts two pages and rejects more")
+    void validatesMaximumTwoPdfPages() throws Exception {
+        byte[] twoPages;
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+            document.addPage(new PDPage());
+            document.save(output);
+            twoPages = output.toByteArray();
+        }
+        assertDoesNotThrow(() -> exportService.validatePdfPageLimit(twoPages));
+
+        byte[] threePages;
+        try (PDDocument document = new PDDocument(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            document.addPage(new PDPage());
+            document.addPage(new PDPage());
+            document.addPage(new PDPage());
+            document.save(output);
+            threePages = output.toByteArray();
+        }
+        assertThrows(ResumePageLimitException.class, () -> exportService.validatePdfPageLimit(threePages));
     }
 
     // ── Builders ──────────────────────────────────────────────────────────

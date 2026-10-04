@@ -147,14 +147,14 @@ export function useResumeEditor(id: string, translate: (key: string, vars?: Reco
       await resumeApi.update(id, payload);
       const blob = format === "pdf" ? await resumeApi.downloadPdf(id, locale) : await resumeApi.downloadDocx(id, locale);
       triggerDownload(blob, `${title || "resume"}.${format}`); setLastSaved(translate("editor.justNow"));
-    } catch { setError(translate(format === "pdf" ? "editor.failedDownloadPdf" : "editor.failedDownloadDocx")); }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : translate(format === "pdf" ? "editor.failedDownloadPdf" : "editor.failedDownloadDocx")); }
     finally { setter(false); }
   }, [id, locale, payload, title, translate]);
 
   const downloadTypst = useCallback(async () => {
     setDownloadingTypst(true); setError(null);
     try { const blob = await resumeApi.downloadTypstPdf(payload as Resume, template); triggerDownload(blob, `${title || "resume"}-${template}.pdf`); }
-    catch { setError("O renderer Typst ainda não está disponível."); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Não foi possível gerar o PDF Typst."); }
     finally { setDownloadingTypst(false); }
   }, [id, payload, template, title, translate]);
 

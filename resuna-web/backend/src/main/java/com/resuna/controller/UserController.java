@@ -9,6 +9,7 @@ import com.resuna.repository.ATSAnalysisRepository;
 import com.resuna.repository.SubscriptionRepository;
 import com.resuna.repository.UserProfileRepository;
 import com.resuna.service.ATSService;
+import com.resuna.service.DailyResumeQuotaService;
 import com.resuna.service.ResumeService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class UserController {
     private final SubscriptionRepository subscriptionRepository;
     private final UserProfileRepository userProfileRepository;
     private final ATSAnalysisRepository atsAnalysisRepository;
+    private final DailyResumeQuotaService dailyResumeQuotaService;
 
     @Value("${app.delete-account-max-auth-age-seconds:300}")
     private long deleteAccountMaxAuthAgeSeconds;
@@ -44,12 +46,14 @@ public class UserController {
     public UserController(ResumeService resumeService, ATSService atsService,
                           SubscriptionRepository subscriptionRepository,
                           UserProfileRepository userProfileRepository,
-                          ATSAnalysisRepository atsAnalysisRepository) {
+                          ATSAnalysisRepository atsAnalysisRepository,
+                          DailyResumeQuotaService dailyResumeQuotaService) {
         this.resumeService = resumeService;
         this.atsService = atsService;
         this.subscriptionRepository = subscriptionRepository;
         this.userProfileRepository = userProfileRepository;
         this.atsAnalysisRepository = atsAnalysisRepository;
+        this.dailyResumeQuotaService = dailyResumeQuotaService;
     }
 
     private String getCurrentUserId(HttpServletRequest request) {
@@ -93,7 +97,11 @@ public class UserController {
             try { userProfileRepository.deleteByUserId(userId); }
             catch (Exception e) { logger.warn("Failed to delete user profile for {}: {}", userId, e.getMessage()); }
 
-            // 5. Delete Firebase Auth user (Admin SDK bypasses recent-login requirement)
+            // 5. Delete per-user daily generation quotas
+            try { dailyResumeQuotaService.deleteForUser(userId); }
+            catch (Exception e) { logger.warn("Failed to delete resume quotas for {}: {}", userId, e.getMessage()); }
+
+            // 6. Delete Firebase Auth user (Admin SDK bypasses recent-login requirement)
             try { FirebaseAuth.getInstance().deleteUser(userId); }
             catch (Exception e) { logger.warn("Failed to delete Firebase Auth user {}: {}", userId, e.getMessage()); }
 

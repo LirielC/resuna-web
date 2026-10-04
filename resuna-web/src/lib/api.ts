@@ -63,6 +63,28 @@ async function getAuthToken(): Promise<string | null> {
     }
 }
 
+async function reserveDailyResumeQuota(): Promise<void> {
+    const token = await getAuthToken();
+    if (!token) throw new Error('Not authenticated. Please sign in.');
+    const response = await fetch(`${API_BASE_URL}/api/resumes/quota/reserve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (response.ok) return;
+
+    let payload: ApiErrorPayload = {};
+    try {
+        payload = (await response.json()) as ApiErrorPayload;
+    } catch {
+        // Use a stable fallback if the server response is not JSON.
+    }
+    throw new ApiRequestError(
+        payload.message || payload.error || 'Você atingiu o limite diário de currículos.',
+        response.status,
+        payload.errorCode,
+    );
+}
+
 async function getClientFingerprint(): Promise<string | null> {
     if (typeof window === 'undefined') return null;
     const storageKey = 'resuna_fp';
@@ -227,6 +249,7 @@ export const resumeApi = {
     },
 
     async create(resume: Omit<Resume, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Resume> {
+        await reserveDailyResumeQuota();
         return localResumeStorage.save(resume);
     },
 
@@ -244,6 +267,7 @@ export const resumeApi = {
         const existing = localResumeStorage.getById(id);
         if (!existing) throw new Error(`Resume ${id} not found`);
         const copy = { ...existing, id: undefined, title: `${existing.title} (cópia)`, createdAt: undefined, updatedAt: undefined };
+        await reserveDailyResumeQuota();
         return localResumeStorage.save(copy);
     },
 
@@ -269,8 +293,7 @@ export const resumeApi = {
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to download PDF: ${response.status} - ${errorText}`);
+            throw new Error(await readErrorMessage(response, `Falha ao gerar PDF (${response.status}).`));
         }
 
         return response.blob();
@@ -285,7 +308,7 @@ export const resumeApi = {
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify(document),
         });
-        if (!response.ok) throw new Error(`Failed to download Typst PDF: ${response.status}`);
+        if (!response.ok) throw new Error(await readErrorMessage(response, `Falha ao gerar PDF (${response.status}).`));
         return response.blob();
     },
 
