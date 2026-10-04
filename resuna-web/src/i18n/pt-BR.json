@@ -26,12 +26,12 @@
     },
     "header": {
         "archives": "Arquivo",
-        "coverLetters": "Cartas de apresentação",
         "credits": "Créditos",
         "features": "Recursos",
         "pricing": "Preços",
         "blog": "Blog",
         "myResumes": "Meus Currículos",
+        "atsAnalyzer": "Analisador ATS",
         "account": "Conta",
         "signOut": "Sair",
         "logIn": "Entrar",

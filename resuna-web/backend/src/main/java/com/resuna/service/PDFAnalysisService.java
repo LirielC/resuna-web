@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.resuna.model.PDFAnalysisResponse;
@@ -206,6 +207,7 @@ public class PDFAnalysisService {
             // PT-BR: Industries
             "tecnologia", "financeiro", "varejo", "logística", "telecomunicações", "saúde"));
 
+    @Autowired
     public PDFAnalysisService(PDFExtractionService pdfExtractionService, OpenRouterService openRouterService,
             PDFSecurityService pdfSecurityService, PDFKeywordMatcher keywordMatcher) {
         this.pdfExtractionService = pdfExtractionService;

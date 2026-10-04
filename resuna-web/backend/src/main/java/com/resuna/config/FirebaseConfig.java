@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.cloud.FirestoreClient;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -34,8 +35,12 @@ public class FirebaseConfig {
     @Value("${firebase.project-id}")
     private String projectId;
 
+    @Value("${firebase.auth-project-id:${firebase.project-id}}")
+    private String authProjectId;
+
     private final ResourceLoader resourceLoader;
     private Firestore firestoreInstance;
+    private FirebaseAuth tokenVerifier;
 
     @Autowired
     public FirebaseConfig(ResourceLoader resourceLoader) {
@@ -45,9 +50,10 @@ public class FirebaseConfig {
     @PostConstruct
     public void initialize() throws IOException {
         try {
+            GoogleCredentials credentials = loadCredentials();
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(loadCredentials())
+                        .setCredentials(credentials)
                         .setProjectId(projectId)
                         .build();
                 FirebaseApp.initializeApp(options);
@@ -56,8 +62,19 @@ public class FirebaseConfig {
                 logger.info("🔥 Firebase already initialized, reusing existing instance");
             }
 
-            // Obter Firestore do FirebaseApp default (mais seguro)
-            firestoreInstance = FirestoreClient.getFirestore(FirebaseApp.getInstance());
+            // Keep Firestore on its existing project; frontend ID tokens belong to authProjectId.
+            FirebaseApp dataApp = FirebaseApp.getInstance();
+            firestoreInstance = FirestoreClient.getFirestore(dataApp);
+            FirebaseApp authApp = FirebaseApp.getApps().stream()
+                    .filter(app -> "resuna-token-verifier".equals(app.getName()))
+                    .findFirst()
+                    .orElseGet(() -> FirebaseApp.initializeApp(
+                            FirebaseOptions.builder()
+                                    .setCredentials(credentials)
+                                    .setProjectId(authProjectId)
+                                    .build(),
+                            "resuna-token-verifier"));
+            tokenVerifier = FirebaseAuth.getInstance(authApp);
             logger.info("✅ Firestore client initialized successfully");
 
         } catch (Exception e) {
@@ -72,6 +89,14 @@ public class FirebaseConfig {
             throw new IllegalStateException("Firestore instance not initialized. Check Firebase configuration.");
         }
         return firestoreInstance;
+    }
+
+    @Bean
+    public FirebaseAuth firebaseTokenVerifier() {
+        if (tokenVerifier == null) {
+            throw new IllegalStateException("Firebase token verifier is not initialized");
+        }
+        return tokenVerifier;
     }
 
     @PreDestroy

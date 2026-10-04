@@ -1,6 +1,7 @@
 "use client";
 
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, Maximize2, Minimize2, Minus, Plus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "@/contexts/LanguageContext";
 import type { Certification, Education, Experience, Language, Project, ResumeTemplate } from "@/lib/types";
 
@@ -49,6 +50,8 @@ export function ResumePreview({
   languages,
 }: ResumePreviewProps) {
   const { t } = useTranslation();
+  const [zoom, setZoom] = useState(1);
+  const [fullscreen, setFullscreen] = useState(false);
   const compact = template === "compact";
   const modern = template === "modern";
 
@@ -60,13 +63,13 @@ export function ResumePreview({
     : "text-stone-900";
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+    <div className={fullscreen ? "fixed inset-0 z-[80] overflow-auto bg-[#d8d5ce] p-5" : "space-y-3"}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           {t("editor.livePreview")}
         </span>
-        <div className="flex rounded-lg border border-stone-200 bg-white p-1" aria-label={t("editor.template")}>
+        <div className="ml-auto flex rounded-lg border border-stone-200 bg-white p-1" aria-label={t("editor.template")}>
           {(["classic", "modern", "compact"] as ResumeTemplate[]).map((option) => (
             <button
               key={option}
@@ -82,11 +85,18 @@ export function ResumePreview({
             </button>
           ))}
         </div>
+        <div className="flex items-center rounded-lg border border-stone-200 bg-white text-[10px] text-stone-600">
+          <button type="button" aria-label="Diminuir zoom" onClick={() => setZoom((value) => Math.max(.7, value - .1))} className="p-2 hover:bg-stone-50"><Minus className="h-3 w-3" /></button>
+          <span className="w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <button type="button" aria-label="Aumentar zoom" onClick={() => setZoom((value) => Math.min(1.3, value + .1))} className="p-2 hover:bg-stone-50"><Plus className="h-3 w-3" /></button>
+          <button type="button" aria-label={fullscreen ? "Sair da tela cheia" : "Abrir em tela cheia"} onClick={() => setFullscreen(!fullscreen)} className="border-l border-stone-200 p-2 hover:bg-stone-50">{fullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}</button>
+        </div>
       </div>
 
       <article
-        className={`min-h-[800px] border border-stone-200 bg-white text-stone-900 shadow-xl ${compact ? "p-7" : "p-10"} ${modern ? "font-sans" : "font-serif"}`}
+        className={`mx-auto min-h-[1123px] w-full max-w-[794px] origin-top border border-stone-200 bg-white text-stone-900 shadow-md transition-transform ${compact ? "p-7" : "p-10"} ${modern ? "font-sans" : "font-serif"}`}
         aria-label={t("editor.livePreview")}
+        style={{ transform: `scale(${zoom})`, marginBottom: `${(zoom - 1) * 1123}px` }}
       >
         <header className={`${modern ? "text-left" : "text-center"} ${compact ? "mb-5" : "mb-7"} border-b border-stone-300 pb-5`}>
           <h1 className={`${compact ? "text-xl" : "text-2xl"} font-bold tracking-tight`}>
@@ -106,7 +116,7 @@ export function ResumePreview({
           </div>
         </header>
 
-        <div className={`space-y-${compact ? "4" : "6"} text-[10px] leading-relaxed`}>
+        <div className={`${compact ? "space-y-4" : "space-y-6"} text-[10px] leading-relaxed`}>
           {summary && (
             <PreviewSection title={t("editor.profile")} className={sectionClass} titleClass={titleClass} compact={compact}>
               <p>{summary}</p>
@@ -118,11 +128,9 @@ export function ResumePreview({
               <div className="space-y-4">
                 {experiences.filter((item) => item.title || item.company).map((item, index) => (
                   <div key={`${item.company}-${index}`}>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <strong className="text-[11px]">{item.title || t("editor.jobTitle")}</strong>
-                      <span className="whitespace-nowrap text-stone-500">{item.startDate} {item.startDate && "–"} {item.current ? t("editor.present") : item.endDate}</span>
-                    </div>
-                    <div className="text-stone-600">{item.company}{item.location && ` · ${item.location}`}</div>
+                    <p><strong className="text-[11px]">{item.title || t("editor.jobTitle")}</strong>{item.company && <span className="text-stone-600"> · {item.company}</span>}</p>
+                    <p className="text-stone-500">{item.startDate}{item.startDate && (item.current || item.endDate) && " – "}{item.current ? t("editor.present") : item.endDate}{item.location && ` · ${item.location}`}</p>
+                    {item.description && <p className="text-stone-600">{item.description}</p>}
                     <BulletList items={item.bullets} />
                   </div>
                 ))}
@@ -131,7 +139,7 @@ export function ResumePreview({
           )}
 
           {projects.some((item) => item.name) && (
-            <PreviewSection title={t("editor.projects")} className={sectionClass} titleClass={titleClass} compact={compact}>
+            <PreviewSection title={t("editor.tabs.projects")} className={sectionClass} titleClass={titleClass} compact={compact}>
               <div className="space-y-3">
                 {projects.filter((item) => item.name).map((item, index) => (
                   <div key={`${item.name}-${index}`}>
@@ -146,12 +154,12 @@ export function ResumePreview({
           )}
 
           {educations.some((item) => item.degree || item.institution) && (
-            <PreviewSection title={t("editor.education")} className={sectionClass} titleClass={titleClass} compact={compact}>
+            <PreviewSection title={t("editor.tabs.education")} className={sectionClass} titleClass={titleClass} compact={compact}>
               <div className="space-y-2">
                 {educations.filter((item) => item.degree || item.institution).map((item, index) => (
-                  <div key={`${item.institution}-${index}`} className="flex items-baseline justify-between gap-3">
-                    <span><strong>{item.degree}</strong>{item.institution && <span className="text-stone-600"> · {item.institution}</span>}</span>
-                    <span className="whitespace-nowrap text-stone-500">{item.graduationDate}</span>
+                  <div key={`${item.institution}-${index}`}>
+                    <p><strong>{item.degree}</strong>{item.institution && <span className="text-stone-600"> · {item.institution}</span>}</p>
+                    {item.graduationDate && <p className="text-stone-500">{item.graduationDate}</p>}
                   </div>
                 ))}
               </div>
@@ -159,7 +167,7 @@ export function ResumePreview({
           )}
 
           {skills.length > 0 && (
-            <PreviewSection title={t("editor.skills")} className={sectionClass} titleClass={titleClass} compact={compact}>
+            <PreviewSection title={t("editor.tabs.skills")} className={sectionClass} titleClass={titleClass} compact={compact}>
               <p>{skills.join(" · ")}</p>
             </PreviewSection>
           )}

@@ -24,12 +24,12 @@
     },
     "header": {
         "archives": "Archives",
-        "coverLetters": "Cover letters",
         "credits": "Credits",
         "features": "Features",
         "pricing": "Pricing",
         "blog": "Blog",
         "myResumes": "My Resumes",
+        "atsAnalyzer": "ATS Analyzer",
         "account": "Account",
         "signOut": "Sign out",
         "logIn": "Log in",

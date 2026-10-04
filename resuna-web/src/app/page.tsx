@@ -1,188 +1,121 @@
-"use client";
-
 import Link from "next/link";
-import { FileText, Target, Globe, ArrowRight, Sparkles, CheckCircle } from "lucide-react";
+import { ArrowRight, FileText, Globe2, SearchCheck } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { GrainOverlay } from "@/components/ui/GrainOverlay";
-import { useTranslation } from "@/contexts/LanguageContext";
 import { THEME } from "@/lib/theme";
 
-const featureIcons = [FileText, Globe, Target] as const;
+const features = [
+  {
+    title: "Editor de currículos",
+    description: "Organize sua trajetória em um currículo claro, profissional e fácil de adaptar.",
+    href: "/signup",
+    icon: FileText,
+  },
+  {
+    title: "Tradução para inglês",
+    description: "Prepare uma versão em inglês mantendo as informações e a estrutura do currículo.",
+    href: "/signup",
+    icon: Globe2,
+  },
+  {
+    title: "Analisador ATS",
+    description: "Compare seu currículo em PDF com os requisitos de uma vaga.",
+    href: "/resumes/upload",
+    icon: SearchCheck,
+  },
+];
+
+function ResumeSheet() {
+  return (
+    <article aria-label="Exemplo de currículo sem imagens e em uma coluna" className="mx-auto w-full max-w-[510px] border border-stone-200 bg-white p-7 shadow-md sm:p-10 lg:rotate-[1.5deg]">
+      <header className="border-b border-stone-300 pb-4 text-center">
+        <p className="font-display text-2xl font-semibold tracking-tight text-stone-900">Mariana Costa</p>
+        <p className="mt-1 text-xs text-stone-600">Product Designer · São Paulo, SP · mariana@email.com</p>
+        <p className="mt-1 text-xs text-stone-600">linkedin.com/in/marianacosta · github.com/marianacosta</p>
+      </header>
+      <section className="mt-5">
+        <h2 className="border-b border-stone-200 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#a64b28]">Resumo profissional</h2>
+        <p className="mt-2 text-[11px] leading-relaxed text-stone-700">Designer de produto com experiência em pesquisa, interfaces digitais e colaboração com equipes multidisciplinares.</p>
+      </section>
+      <section className="mt-5">
+        <h2 className="border-b border-stone-200 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#a64b28]">Experiência profissional</h2>
+        <div className="mt-2 text-[11px] leading-relaxed text-stone-700">
+          <p><strong>Product Designer Sênior · InovaTech</strong></p>
+          <p className="text-stone-500">2022 – atual · São Paulo, SP</p>
+          <p className="mt-1">Liderança de projetos de experiência digital e evolução de produtos.</p>
+        </div>
+        <div className="mt-3 text-[11px] leading-relaxed text-stone-700">
+          <p><strong>Product Designer · Estúdio Norte</strong></p>
+          <p className="text-stone-500">2020 – 2022 · Remoto</p>
+          <p className="mt-1">Pesquisa com usuários e criação de interfaces acessíveis.</p>
+        </div>
+      </section>
+      <section className="mt-5">
+        <h2 className="border-b border-stone-200 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#a64b28]">Formação</h2>
+        <p className="mt-2 text-[11px] leading-relaxed text-stone-700"><strong>Design Digital</strong> · Universidade de São Paulo · 2020</p>
+      </section>
+      <section className="mt-5">
+        <h2 className="border-b border-stone-200 pb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[#a64b28]">Habilidades</h2>
+        <p className="mt-2 text-[11px] leading-relaxed text-stone-700">Pesquisa com usuários · Figma · Prototipação · Acessibilidade</p>
+      </section>
+    </article>
+  );
+}
 
 export default function Home() {
-  const { t } = useTranslation();
-
-  const features = [
-    {
-      title: t("landing.feature01Title"),
-      description: t("landing.feature01Desc"),
-      icon: featureIcons[0],
-    },
-    {
-      title: t("landing.feature02Title"),
-      description: t("landing.feature02Desc"),
-      icon: featureIcons[1],
-    },
-    {
-      title: t("landing.feature03Title"),
-      description: t("landing.feature03Desc"),
-      icon: featureIcons[2],
-    },
-  ];
-
   return (
-    <div
-      className={`relative min-h-screen ${THEME.bg} ${THEME.fontBody} ${THEME.text} selection:bg-orange-200 selection:text-orange-900 overflow-hidden`}
-    >
-      <GrainOverlay />
+    <div className={`min-h-screen overflow-hidden bg-[#f7f5ef] ${THEME.fontBody} text-stone-900`}>
       <Header />
-
-      <main className="relative z-10">
-        {/* Soft & Human Hero Section */}
-        <section className="container-custom pt-32 pb-20 lg:pt-40 lg:pb-32 relative">
-          {/* Decorative background blur/glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-orange-400/10 rounded-full blur-[120px] pointer-events-none" />
-          
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center relative z-10">
-            {/* Text Content */}
-            <div className="text-center lg:text-left max-w-2xl mx-auto lg:mx-0">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 border border-orange-200/50 text-orange-700 text-sm font-medium mb-8 shadow-sm backdrop-blur-sm">
-                <Sparkles className="w-4 h-4 text-orange-500" />
-                <span>{t("landing.resumeIntelligence")}</span>
-              </div>
-              
-              <h1
-                className={`${THEME.fontDisplay} text-[clamp(2.5rem,5vw,4.5rem)] leading-[1.1] text-ink mb-6 font-medium tracking-tight`}
-              >
-                {t("landing.heroTitle")}{" "}
-                <span className="text-orange-600 italic font-normal block mt-2">{t("landing.heroTitleEmphasis")}</span>
-              </h1>
-              
-              <p className="text-lg lg:text-xl text-ink-soft leading-relaxed mb-10 font-medium">
-                {t("landing.heroDescription")}
-              </p>
-              
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                <Link
-                  href="/signup"
-                  className="btn-primary w-full sm:w-auto min-w-[220px] text-base h-14"
-                >
-                  {t("landing.beginJourney")}
-                  <ArrowRight className="w-5 h-5 ml-2" aria-hidden />
-                </Link>
-                <Link href="/login" className="btn-secondary w-full sm:w-auto min-w-[220px] text-base h-14">
-                  {t("landing.signIn")}
-                </Link>
-              </div>
-              
-              <div className="mt-10 flex items-center justify-center lg:justify-start gap-6 text-sm text-stone-500 font-medium">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span>Grátis para usar</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span>Sempre de graça para usar sem assinatura </span>
-                </div>
-              </div>
+      <main>
+        <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 pb-20 pt-28 sm:px-8 lg:min-h-[690px] lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:pb-24 lg:pt-32">
+          <div className="relative z-10 max-w-xl">
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-[#a64b28]">Currículos para sua próxima etapa</p>
+            <h1 className="font-display text-5xl font-medium leading-[1.04] tracking-tight text-[#252522] sm:text-6xl lg:text-[4.25rem]">
+              Seu próximo capítulo começa com um currículo melhor.
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-7 text-stone-600 sm:text-lg">
+              Crie um currículo profissional, traduza para inglês e compare com as vagas que interessam.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link href="/signup" className="btn-primary h-12 gap-2 px-6 text-base">
+                Criar currículo <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <span className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white/70 px-3 py-2 text-xs font-medium text-stone-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" /> Sempre gratuito
+              </span>
             </div>
-
-            {/* Visual Mockup */}
-            <div className="relative mx-auto w-full max-w-[500px] lg:max-w-none">
-              <div className="relative w-full aspect-[1/1.2] lg:aspect-[4/5] bg-white rounded-3xl shadow-elevated border border-stone-200/60 overflow-hidden transform rotate-2 hover:rotate-0 transition-transform duration-700">
-                {/* Mockup Header */}
-                <div className="absolute top-0 inset-x-0 h-24 bg-stone-50 border-b border-stone-100 flex flex-col justify-center px-8">
-                  <div className="w-1/2 h-6 bg-stone-200 rounded-md mb-3" />
-                  <div className="w-1/3 h-4 bg-stone-100 rounded-md" />
-                </div>
-                {/* Mockup Body */}
-                <div className="absolute top-24 inset-x-0 bottom-0 p-8 space-y-6">
-                  <div className="space-y-3">
-                    <div className="w-1/4 h-4 bg-orange-100 rounded-md" />
-                    <div className="w-full h-3 bg-stone-100 rounded-md" />
-                    <div className="w-full h-3 bg-stone-100 rounded-md" />
-                    <div className="w-5/6 h-3 bg-stone-100 rounded-md" />
-                  </div>
-                  <div className="space-y-3 pt-4">
-                    <div className="w-1/4 h-4 bg-orange-100 rounded-md" />
-                    <div className="w-full h-3 bg-stone-100 rounded-md" />
-                    <div className="w-full h-3 bg-stone-100 rounded-md" />
-                    <div className="w-4/6 h-3 bg-stone-100 rounded-md" />
-                  </div>
-                  <div className="space-y-3 pt-4">
-                    <div className="w-1/4 h-4 bg-orange-100 rounded-md" />
-                    <div className="flex gap-2">
-                      <div className="w-16 h-6 bg-stone-100 rounded-full" />
-                      <div className="w-20 h-6 bg-stone-100 rounded-full" />
-                      <div className="w-14 h-6 bg-stone-100 rounded-full" />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Floating Badge */}
-                <div className="absolute -right-4 top-32 bg-white px-4 py-3 rounded-2xl shadow-lg border border-orange-100 flex items-center gap-3 transform -rotate-6">
-                  <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
-                    <span className="text-green-600 font-bold text-lg">98</span>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">Score ATS</p>
-                    <p className="text-sm font-bold text-stone-800">Excelente</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          </div>
+          <div className="relative px-2 py-4 sm:px-8 lg:px-12">
+            <div aria-hidden="true" className="absolute inset-x-8 top-12 bottom-8 -rotate-3 border border-[#e8d8cc] bg-[#f0e5dc]" />
+            <ResumeSheet />
+            <p className="mx-auto mt-5 max-w-[510px] text-center text-xs text-stone-500">Um documento limpo, legível e sem elementos que atrapalham a leitura por sistemas de seleção.</p>
           </div>
         </section>
 
-        {/* Features Section - Soft Cards */}
-        <section
-          id="features"
-          className="relative py-24 lg:py-32"
-        >
-          {/* Subtle curved background separation */}
-          <div className="absolute inset-0 bg-white/50 backdrop-blur-sm rounded-t-[3rem] lg:rounded-t-[5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.02)]" />
-          
-          <div className="container-custom max-w-6xl relative z-10">
-            <div className="text-center max-w-2xl mx-auto mb-16 lg:mb-20">
-              <h2 className={`${THEME.fontDisplay} text-3xl lg:text-4xl text-ink mb-6 font-medium`}>
-                {t("landing.precisionTitle")}
-              </h2>
-              <p className="text-ink-soft text-lg leading-relaxed">{t("landing.capabilities")}</p>
+        <section id="features" className="border-y border-stone-200 bg-white/70 px-5 py-16 sm:px-8 lg:py-20">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-10 max-w-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#a64b28]">Resuna</p>
+              <h2 className="mt-3 font-display text-3xl font-medium tracking-tight sm:text-4xl">Tudo para apresentar bem sua experiência.</h2>
             </div>
-
-            <div className="grid md:grid-cols-3 gap-8 lg:gap-10">
-              {features.map(({ title, description, icon: Icon }) => (
-                <div key={title} className="card-editorial h-full bg-white/80 backdrop-blur-md border-white/40 hover:bg-white transition-all duration-500">
-                  <div className="flex flex-col h-full text-left p-8">
-                    <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center mb-6 shadow-sm border border-orange-100/50">
-                      <Icon className="w-7 h-7" strokeWidth={1.5} aria-hidden />
-                    </div>
-                    <h3 className={`${THEME.fontDisplay} text-2xl text-ink mb-4 font-medium`}>{title}</h3>
-                    <p className="text-ink-soft leading-relaxed flex-1 text-[15px]">{description}</p>
-                  </div>
-                </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {features.map(({ title, description, href, icon: Icon }) => (
+                <Link key={title} href={href} className="group rounded-xl border border-stone-200 bg-white p-6 transition-colors hover:border-[#d4a18a] hover:bg-[#fffdfa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">
+                  <Icon className="h-5 w-5 text-[#a64b28]" strokeWidth={1.7} aria-hidden="true" />
+                  <h3 className="mt-5 font-display text-xl font-semibold">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-stone-600">{description}</p>
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#a64b28]">Conhecer <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
+                </Link>
               ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-24 lg:py-32 relative overflow-hidden">
-          <div className="absolute inset-0 bg-orange-50/50" />
-          <div className="container-custom max-w-3xl text-center relative z-10">
-            <h2 className={`${THEME.fontDisplay} text-3xl lg:text-4xl text-ink mb-6 font-medium`}>
-              {t("landing.ctaTitle")}
-            </h2>
-            <p className="text-ink-soft text-lg mb-10 leading-relaxed max-w-xl mx-auto">{t("landing.ctaDescription")}</p>
-            <Link href="/signup" className="btn-primary inline-flex items-center gap-2 h-14 px-8 text-base">
-              {t("landing.startFree")}
-              <ArrowRight className="w-5 h-5 ml-2" aria-hidden />
-            </Link>
-          </div>
+        <section className="px-5 py-16 text-center sm:px-8 lg:py-20">
+          <h2 className="font-display text-3xl font-medium tracking-tight">Vamos criar o seu?</h2>
+          <Link href="/signup" className="btn-primary mt-6 h-12 px-6">Criar currículo</Link>
         </section>
       </main>
-
       <Footer />
     </div>
   );

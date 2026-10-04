@@ -1,5 +1,6 @@
 package com.resuna.model;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -210,6 +211,17 @@ class ResumeValidationTest {
     @Nested
     @DisplayName("Experience Validation")
     class ExperienceTests {
+
+        @Test
+        @DisplayName("Legacy position and description fields deserialize")
+        void legacyExperienceFields_areMapped() throws Exception {
+            Resume resume = new ObjectMapper().readValue(
+                    "{\"experience\":[{\"position\":\"Frontend Developer\",\"description\":\"Built web apps\"}]}",
+                    Resume.class);
+
+            assertEquals("Frontend Developer", resume.getExperience().get(0).getTitle());
+            assertEquals("Built web apps", resume.getExperience().get(0).getDescription());
+        }
 
         @Test
         @DisplayName("Experience with valid data passes")

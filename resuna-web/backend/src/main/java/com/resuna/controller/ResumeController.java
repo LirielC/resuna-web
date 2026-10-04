@@ -3,12 +3,14 @@ package com.resuna.controller;
 import com.resuna.model.Resume;
 import com.resuna.model.UserSubscription;
 import com.resuna.service.AnalyticsService;
+import com.resuna.service.AiRequestGuardService;
 import com.resuna.service.ExportService;
 import com.resuna.service.PDFSecurityService;
 import com.resuna.service.ResumeImportService;
 import com.resuna.service.ResumeService;
 import com.resuna.service.ResumeTranslationService;
 import com.resuna.service.SubscriptionService;
+import com.resuna.service.TypstRendererService;
 import com.resuna.util.SecurityUtils;
 import com.resuna.util.RequestIdentity;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,12 +45,13 @@ public class ResumeController {
     private final AiRequestGuardService aiRequestGuardService;
     private final SubscriptionService subscriptionService;
     private final SecurityUtils securityUtils;
+    private final TypstRendererService typstRendererService;
 
     public ResumeController(ResumeService resumeService, ExportService exportService,
             AnalyticsService analyticsService, ResumeImportService resumeImportService,
             PDFSecurityService pdfSecurityService, ResumeTranslationService resumeTranslationService,
             SubscriptionService subscriptionService, SecurityUtils securityUtils,
-            AiRequestGuardService aiRequestGuardService) {
+            AiRequestGuardService aiRequestGuardService, TypstRendererService typstRendererService) {
         this.resumeService = resumeService;
         this.exportService = exportService;
         this.analyticsService = analyticsService;
@@ -58,6 +61,7 @@ public class ResumeController {
         this.subscriptionService = subscriptionService;
         this.aiRequestGuardService = aiRequestGuardService;
         this.securityUtils = securityUtils;
+        this.typstRendererService = typstRendererService;
     }
 
     private String getCurrentUserId(HttpServletRequest request) {
@@ -198,6 +202,23 @@ public class ResumeController {
                 securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
 
         return fileResponse(pdfBytes, resume.getTitle(), ".pdf", MediaType.APPLICATION_PDF);
+    }
+
+    @PostMapping("/export/typst")
+    public ResponseEntity<byte[]> exportToTypst(
+            @Valid @RequestBody Resume resume,
+            @RequestParam(value = "theme", defaultValue = "classic") String theme,
+            HttpServletRequest request) {
+        String userId = getCurrentUserId(request);
+        try {
+            byte[] pdf = typstRendererService.render(resume, theme);
+            logActivitySafely(userId, "EXPORT_TYPST", "{\"source\":\"body\"}",
+                    securityUtils.getSecureClientIp(request), request.getHeader("User-Agent"));
+            return fileResponse(pdf, resume.getTitle(), ".pdf", MediaType.APPLICATION_PDF);
+        } catch (Exception e) {
+            logger.warn("Typst export failed", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
     }
 
     /**

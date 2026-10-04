@@ -10,16 +10,14 @@ import {
     Loader2,
     CheckCircle,
     AlertCircle,
-    Sparkles,
     X,
     Search,
-    Stamp,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
-import { atsApi, subscriptionApi } from "@/lib/api";
+import { atsApi } from "@/lib/api";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { THEME } from "@/lib/theme";
 import { GrainOverlay } from "@/components/ui/GrainOverlay";
@@ -40,33 +38,38 @@ interface PDFAnalysisResult {
     };
 }
 
+function isPdf(file?: File): file is File {
+    return !!file && (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
+}
+
 export default function UploadResumePage() {
     const [file, setFile] = useState<File | null>(null);
     const [jobDescription, setJobDescription] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSigningIn, setIsSigningIn] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<PDFAnalysisResult | null>(null);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const { t, locale: language } = useTranslation();
+    const { user, loading: authLoading, signInWithGoogle } = useAuth();
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile?.type === "application/pdf") {
-            setFile(droppedFile);
-            setError(null);
+        if (isPdf(droppedFile)) {
+            if (droppedFile.size > 5 * 1024 * 1024) setError("O PDF deve ter no máximo 5 MB.");
+            else { setFile(droppedFile); setError(null); }
         } else {
             setError(t("upload.pleasePdf"));
         }
-    }, []);
+    }, [t]);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
-        if (selectedFile?.type === "application/pdf") {
-            setFile(selectedFile);
-            setError(null);
+        if (isPdf(selectedFile)) {
+            if (selectedFile.size > 5 * 1024 * 1024) setError("O PDF deve ter no máximo 5 MB.");
+            else { setFile(selectedFile); setError(null); }
         } else {
             setError(t("upload.pleasePdf"));
         }
@@ -82,10 +85,15 @@ export default function UploadResumePage() {
             return;
         }
 
-        setIsAnalyzing(true);
         setError(null);
 
         try {
+            if (!user) {
+                setIsSigningIn(true);
+                await signInWithGoogle();
+                setIsSigningIn(false);
+            }
+            setIsAnalyzing(true);
             const analysisResult = await atsApi.analyzePdf(
                 file,
                 jobDescription,
@@ -93,31 +101,26 @@ export default function UploadResumePage() {
             ) as unknown as PDFAnalysisResult;
 
             setResult(analysisResult);
-            try {
-                const credits = await subscriptionApi.getCredits();
-                setToastMessage(t('common.creditUsedRemaining', { count: credits.creditsRemaining }));
-            } catch {
-                setToastMessage(t('common.creditUsed'));
-            }
         } catch (err) {
-            setError(err instanceof Error ? err.message : t("upload.failedAnalyze"));
+            const code = err && typeof err === "object" && "code" in err ? String((err as { code: string }).code) : "";
+            setError(code === "auth/popup-closed-by-user" ? "Entre na sua conta para iniciar a análise. Seus dados continuam preenchidos." : err instanceof Error ? err.message : t("upload.failedAnalyze"));
         } finally {
+            setIsSigningIn(false);
             setIsAnalyzing(false);
         }
     };
 
     return (
         <div className={`min-h-screen ${THEME.bg} ${THEME.fontBody} text-stone-900 selection:bg-orange-100 selection:text-orange-900`}>
-            {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
             <GrainOverlay />
 
             <Header />
 
-            <main className="relative z-10 pt-24 lg:pt-32 pb-20">
-                <div className="container-custom max-w-5xl">
+            <main className="relative z-10 px-5 pb-20 pt-28 sm:px-8 lg:pt-32">
+                <div className="mx-auto max-w-6xl">
                     <Link
                         href="/resumes"
-                        className="inline-flex items-center gap-2 text-stone-500 hover:text-orange-600 mb-8 transition-colors font-medium"
+                        className="mb-7 inline-flex items-center gap-2 text-sm font-medium text-stone-500 transition-colors hover:text-[#a64b28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         {t('upload.backToArchives')}
@@ -126,132 +129,123 @@ export default function UploadResumePage() {
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center mb-12 text-center"
+                        className="mb-9 max-w-2xl"
                     >
-                        <div className="w-16 h-16 rounded-full border border-stone-300 bg-white flex items-center justify-center mb-6 shadow-sm">
-                            <Search className="w-6 h-6 text-stone-900" />
+                        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-600">
+                            <Search className="h-3.5 w-3.5 text-[#a64b28]" aria-hidden="true" />
+                            Compare currículo e vaga
                         </div>
-                        <h1 className={`${THEME.fontDisplay} text-4xl lg:text-5xl font-medium text-stone-900 tracking-tight mb-4`}>
-                            {t('upload.resumeReview')}
+                        <h1 className={`${THEME.fontDisplay} mb-3 text-4xl font-medium tracking-tight text-stone-900 sm:text-5xl`}>
+                            Analisador ATS
                         </h1>
-                        <p className="text-stone-600 font-serif text-lg max-w-2xl text-center leading-relaxed">
-                            {t('upload.reviewSubtitle')}
+                        <p className="max-w-2xl text-base leading-7 text-stone-600 sm:text-lg">
+                            Envie seu currículo em PDF e compare o conteúdo com os requisitos da vaga.
                         </p>
                     </motion.div>
 
                     {error && (
-                        <div className="mb-8 p-4 bg-red-50 text-red-800 border-l-2 border-red-500 rounded-sm flex items-center gap-3 max-w-3xl mx-auto">
+                        <div role="alert" className="mb-6 flex max-w-3xl items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             {error}
                         </div>
                     )}
 
                     {!result ? (
-                        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-                            {/* Upload Section (Tray) */}
-                            <div className="space-y-4">
-                                <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 pl-1">
-                                    {t('upload.theManuscript')}
-                                </label>
-                                <div
+                        <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm sm:p-7">
+                            <div className="grid items-start gap-6 lg:grid-cols-2">
+                                <div className="space-y-2">
+                                    <label htmlFor="resume-pdf" className="block text-sm font-semibold text-stone-800">Currículo em PDF</label>
+                                    <div
                                     onDragOver={(e) => {
                                         e.preventDefault();
                                         setIsDragging(true);
                                     }}
                                     onDragLeave={() => setIsDragging(false)}
                                     onDrop={handleDrop}
-                                    className={`
-                                        relative h-80 border-2 border-dashed rounded-sm transition-all duration-300 cursor-pointer flex flex-col items-center justify-center p-8 group
+                                    className={`relative flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed p-6 text-center transition-colors group
                                         ${isDragging
-                                            ? "border-orange-500 bg-orange-50/50 scale-[1.02]"
+                                            ? "border-orange-500 bg-orange-50"
                                             : file
-                                                ? "border-stone-900 bg-white shadow-md"
-                                                : "border-stone-300 bg-stone-50/50 hover:border-stone-400 hover:bg-stone-100"
+                                                ? "border-emerald-300 bg-emerald-50/40"
+                                                : "border-stone-300 bg-[#fbfaf7] hover:border-[#bd7656] hover:bg-[#fffdfa]"
                                         }
                                     `}
                                 >
                                     <input
+                                        id="resume-pdf"
                                         type="file"
                                         accept=".pdf"
+                                        aria-label="Selecionar currículo em PDF (máximo 5 MB)"
                                         onChange={handleFileSelect}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                                        className="sr-only"
                                     />
 
                                     {file ? (
                                         <div className="flex flex-col items-center relative z-10 animate-fade-in-up">
-                                            <div className="w-16 h-20 bg-white border border-stone-200 shadow-sm flex items-center justify-center mb-4 relative">
-                                                <div className="absolute top-0 right-0 w-4 h-4 bg-stone-100 border-l border-b border-stone-200" />
-                                                <FileText className="w-8 h-8 text-stone-800" strokeWidth={1} />
+                                            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-emerald-700">
+                                                <FileText className="h-6 w-6" strokeWidth={1.5} />
                                             </div>
-                                            <p className={`${THEME.fontDisplay} font-medium text-xl text-stone-900 mb-1 max-w-[200px] truncate`}>
+                                            <p className="mb-1 max-w-[240px] truncate text-sm font-semibold text-stone-900">
                                                 {file.name}
                                             </p>
-                                            <p className="text-sm text-stone-500 font-serif italic mb-4">
-                                                {(file.size / 1024 / 1024).toFixed(2)} MB • {t('upload.readyForReview')}
+                                            <p className="mb-3 text-xs text-stone-500">
+                                                {(file.size / 1024 / 1024).toFixed(2)} MB · Pronto para analisar
                                             </p>
                                             <button
+                                                type="button"
                                                 onClick={(e) => {
-                                                    // This might conflict with the file input overlay, 
-                                                    // but for now we rely on the user clicking "Drop zone" to replace or just drag-drop again.
-                                                    // The Remove button is tricky with the overlay, so we'll just encourage re-upload.
                                                     e.preventDefault();
                                                     e.stopPropagation();
                                                     setFile(null);
                                                 }}
-                                                className="text-xs uppercase tracking-widest text-stone-400 hover:text-red-600 transition-colors z-30 relative"
+                                                className="relative z-30 text-xs font-medium text-stone-500 underline underline-offset-2 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                                             >
                                                 {t('upload.removeDocument')}
                                             </button>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center text-center">
-                                            <Upload className="w-8 h-8 text-stone-400 mb-6 group-hover:-translate-y-1 transition-transform" strokeWidth={1.5} />
-                                            <p className={`${THEME.fontDisplay} text-xl text-stone-900 mb-2`}>
-                                                {t('upload.uploadPdf')}
-                                            </p>
-                                            <p className="text-stone-500 text-sm italic max-w-xs">
-                                                {t('upload.dropOrBrowse')}
+                                            <Upload className="mb-4 h-7 w-7 text-[#a64b28]" strokeWidth={1.5} />
+                                            <label htmlFor="resume-pdf" className="cursor-pointer font-medium text-stone-900">Arraste o PDF ou clique para escolher</label>
+                                            <p className="mt-2 text-xs text-stone-500">
+                                                PDF · até 5 MB
                                             </p>
                                         </div>
                                     )}
                                 </div>
-                            </div>
+                                </div>
 
-                            {/* Job Description Section (Notepad) */}
-                            <div className="space-y-4">
-                                <label className="block text-xs font-bold uppercase tracking-widest text-stone-500 pl-1">
-                                    {t('upload.theCriteria')}
-                                </label>
-                                <div className="relative">
+                                <div className="space-y-2">
+                                    <label htmlFor="job-description" className="block text-sm font-semibold text-stone-800">Descrição da vaga</label>
                                     <textarea
-                                        placeholder={t('upload.jobDescPlaceholder')}
-                                        rows={12}
+                                        id="job-description"
+                                        placeholder="Cole aqui as responsabilidades, requisitos e qualificações da vaga..."
+                                        rows={10}
+                                        maxLength={8000}
                                         value={jobDescription}
                                         onChange={(e) => setJobDescription(e.target.value)}
-                                        className="w-full h-80 p-8 bg-white border border-stone-200 rounded-sm focus:border-stone-900 focus:outline-none transition-colors font-serif text-stone-800 placeholder-stone-300 resize-none leading-relaxed shadow-sm hover:shadow-md"
+                                        className="input-editorial min-h-64 resize-y leading-6"
                                     />
-                                    {/* Notebook Lines effect - purely decorative */}
-                                    <div className="absolute top-0 left-8 bottom-0 w-px bg-red-100/50 pointer-events-none" />
+                                    <p className="text-right text-xs text-stone-500">{jobDescription.length}/8.000</p>
                                 </div>
                             </div>
 
-                            {/* Analyze Button */}
-                            <div className="lg:col-span-2 flex justify-center pt-8">
+                            <div className="mt-6 flex flex-col items-start gap-3 border-t border-stone-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs leading-5 text-stone-500">A análise começa após você entrar na conta. O arquivo e a descrição permanecem nesta página.</p>
                                 <Button
                                     onClick={handleAnalyze}
-                                    disabled={isAnalyzing || !file || !jobDescription.trim()}
-                                    className="min-w-[250px] py-6 text-lg font-serif bg-stone-900 hover:bg-stone-800 text-white shadow-lg shadow-stone-900/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
+                                    disabled={isAnalyzing || isSigningIn || authLoading || !file || !jobDescription.trim()}
+                                    className="h-11 w-full shrink-0 rounded-lg bg-[#a64b28] px-5 text-sm font-semibold text-white shadow-none hover:bg-[#8f4023] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 sm:w-auto"
                                 >
-                                    {isAnalyzing ? (
+                                    {isSigningIn ? (
+                                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando na sua conta…</>
+                                    ) : isAnalyzing ? (
                                         <>
-                                            <Loader2 className="w-5 h-5 animate-spin mr-3" />
-                                            {t('upload.readingManuscript')}
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Analisando currículo…
                                         </>
                                     ) : (
-                                        <>
-                                            <Sparkles className="w-5 h-5 mr-3" />
-                                            {t('upload.runResumeReview')}
-                                        </>
+                                        <>Analisar compatibilidade</>
                                     )}
                                 </Button>
                             </div>
@@ -261,110 +255,41 @@ export default function UploadResumePage() {
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="max-w-4xl mx-auto"
+                            className="mx-auto max-w-5xl"
                         >
-                            {/* Paper Report Card */}
-                            <div className="bg-white p-10 lg:p-16 border border-stone-200 shadow-xl relative overflow-hidden">
-                                {/* Decorative "Confidential" or "Reviewed" stamp look */}
-                                <div className="absolute top-10 right-10 opacity-30 rotate-12 pointer-events-none">
-                                    <div className="border-4 border-stone-900 p-2 rounded-sm">
-                                        <span className="text-4xl font-black uppercase tracking-widest text-stone-900">{t('upload.reviewed')}</span>
+                            <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+                                <div className="flex flex-col gap-6 border-b border-stone-100 p-5 sm:flex-row sm:items-center sm:p-7">
+                                    <div className="flex h-28 w-28 shrink-0 flex-col items-center justify-center rounded-full border-[6px] border-[#e9d8ce] bg-[#fffaf7] text-center" role="progressbar" aria-label="Compatibilidade com a vaga" aria-valuemin={0} aria-valuemax={100} aria-valuenow={result.score}>
+                                        <span className="font-display text-3xl font-semibold text-stone-900">{result.score}%</span>
+                                        <span className="text-[10px] text-stone-500">compatibilidade</span>
                                     </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a64b28]">Resultado da análise</p>
+                                        <h2 className="mt-2 font-display text-2xl font-medium tracking-tight text-stone-900">Seu currículo combina com esta vaga?</h2>
+                                        <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{result.score >= 80 ? "Há boa correspondência entre seu currículo e os requisitos encontrados." : result.score >= 60 ? "Alguns requisitos aparecem no currículo; veja os pontos que podem ser fortalecidos." : "Há requisitos importantes da vaga que ainda não aparecem com clareza no currículo."}</p>
+                                    </div>
+                                    <Button variant="secondary" onClick={() => { setResult(null); setFile(null); setJobDescription(""); }} className="h-10 shrink-0 rounded-lg px-4 text-sm">Analisar outra vaga</Button>
                                 </div>
 
-                                <div className="flex flex-col lg:flex-row items-center lg:items-start gap-10 border-b border-dashed border-stone-200 pb-12 mb-12">
-                                    {/* Score Stamp */}
-                                    <div className="relative group">
-                                        <svg viewBox="0 0 200 200" className="w-48 h-48 animate-spin-slow-once">
-                                            <defs>
-                                                <path id="circlePath" d="M 100, 100 m -75, 0 a 75,75 0 1,1 150,0 a 75,75 0 1,1 -150,0" />
-                                            </defs>
-                                            <text fontSize="14" fill="#78716c" letterSpacing="2">
-                                                <textPath xlinkHref="#circlePath" className="uppercase font-bold">
-                                                    Official • Resume • Review • Approved •
-                                                </textPath>
-                                            </text>
-                                        </svg>
-                                        <div className="absolute inset-0 flex items-center justify-center flex-col">
-                                            <span className={`${THEME.fontDisplay} text-6xl font-bold text-stone-900`}>
-                                                {result.score}
-                                            </span>
-                                            <span className="text-stone-400 font-serif italic">/ 100</span>
+                                <div className="grid gap-0 md:grid-cols-2">
+                                    <section className="border-b border-stone-100 p-5 sm:p-7 md:border-b-0 md:border-r" aria-labelledby="matched-keywords-heading">
+                                        <h3 id="matched-keywords-heading" className="flex items-center gap-2 text-sm font-semibold text-stone-900"><CheckCircle className="h-4 w-4 text-emerald-700" aria-hidden="true"/>Requisitos encontrados</h3>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {result.matchedKeywords.length > 0 ? result.matchedKeywords.map((keyword) => <span key={keyword} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-800">{keyword}</span>) : <span className="text-sm text-stone-500">Nenhuma correspondência identificada.</span>}
                                         </div>
-                                    </div>
-
-                                    <div className="flex-1 text-center lg:text-left pt-4">
-                                        <h2 className={`${THEME.fontDisplay} text-3xl font-semibold text-stone-900 mb-4`}>
-                                            {t('upload.editorsNote')}
-                                        </h2>
-                                        <p className="text-stone-600 font-serif text-lg leading-relaxed mb-6">
-                                            {result.score >= 80
-                                                ? t('upload.editorCommentHigh')
-                                                : result.score >= 60
-                                                    ? t('upload.editorCommentMedium')
-                                                    : t('upload.editorCommentLow')}
-                                        </p>
-                                        <div className="flex justify-center lg:justify-start gap-4">
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() => {
-                                                    setResult(null);
-                                                    setFile(null);
-                                                    setJobDescription("");
-                                                }}
-                                                className="font-serif text-stone-500 hover:text-stone-900 border-stone-200"
-                                            >
-                                                {t('upload.reviewAnotherDraft')}
-                                            </Button>
+                                    </section>
+                                    <section className="p-5 sm:p-7" aria-labelledby="missing-keywords-heading">
+                                        <h3 id="missing-keywords-heading" className="flex items-center gap-2 text-sm font-semibold text-stone-900"><X className="h-4 w-4 text-[#a64b28]" aria-hidden="true"/>Palavras-chave ausentes</h3>
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {result.missingKeywords.length > 0 ? result.missingKeywords.map((keyword) => <span key={keyword} className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs text-[#8e4e32]">{keyword}</span>) : <span className="text-sm text-stone-500">Nenhuma palavra-chave importante ausente.</span>}
                                         </div>
-                                    </div>
+                                    </section>
                                 </div>
 
-                                <div className="grid lg:grid-cols-2 gap-12">
-                                    {/* Left Column: Keywords */}
-                                    <div className="space-y-8">
-                                        <div>
-                                            <h3 className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-4 flex items-center gap-2">
-                                                <CheckCircle className="w-4 h-4" /> {t('upload.strongMatches')}
-                                            </h3>
-                                            <div className="flex flex-wrap gap-2 text-sm font-serif">
-                                                {result.matchedKeywords.length > 0 ? result.matchedKeywords.map((k) => (
-                                                    <span key={k} className="px-3 py-1 bg-stone-100 text-stone-700 rounded-full border border-stone-200">
-                                                        {k}
-                                                    </span>
-                                                )) : <span className="text-stone-400 italic">{t('upload.noKeywordsFound')}</span>}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h3 className="text-xs font-bold uppercase tracking-widest text-red-400 mb-4 flex items-center gap-2">
-                                                <X className="w-4 h-4" /> {t('upload.missingElements')}
-                                            </h3>
-                                            <div className="flex flex-wrap gap-2 text-sm font-serif">
-                                                {result.missingKeywords.length > 0 ? result.missingKeywords.map((k) => (
-                                                    <span key={k} className="px-3 py-1 bg-red-50 text-red-700 rounded-full border border-red-100 line-through decoration-red-300">
-                                                        {k}
-                                                    </span>
-                                                )) : <span className="text-stone-400 italic">{t('upload.noMissingKeywords')}</span>}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Right Column: Suggestions */}
-                                    <div>
-                                        <h3 className="text-xs font-bold uppercase tracking-widest text-stone-400 mb-4 flex items-center gap-2">
-                                            <Stamp className="w-4 h-4" /> {t('upload.editorialSuggestions')}
-                                        </h3>
-                                        <ul className="space-y-4 font-serif text-stone-700">
-                                            {result.suggestions.map((suggestion, index) => (
-                                                <li key={index} className="flex gap-4">
-                                                    <span className="text-orange-500 font-bold font-display text-lg">{index + 1}.</span>
-                                                    <span className="leading-relaxed">{suggestion}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
+                                <section className="border-t border-stone-100 bg-[#fbfaf7] p-5 sm:p-7" aria-labelledby="suggestions-heading">
+                                    <h3 id="suggestions-heading" className="text-sm font-semibold text-stone-900">Sugestões para adaptar seu currículo</h3>
+                                    {result.suggestions.length > 0 ? <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-stone-600">{result.suggestions.map((suggestion, index) => <li key={`${index}-${suggestion}`}>{suggestion}</li>)}</ul> : <p className="mt-2 text-sm text-stone-600">Não há sugestões adicionais para esta análise.</p>}
+                                </section>
                             </div>
                         </motion.div>
                     )}

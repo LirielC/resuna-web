@@ -1,18 +1,36 @@
 "use client";
 
-import { FileText } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Eye, Pencil } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Button } from "@/components/ui/Button";
-import { GrainOverlay } from "@/components/ui/GrainOverlay";
 import { ResumePreview } from "@/components/resume/ResumePreview";
-import { useTranslation } from "@/contexts/LanguageContext";
-import { EditorBottomBar } from "@/components/editor/EditorBottomBar";
 import { EditorForm } from "@/components/editor/EditorForm";
 import { EditorSectionNavigation } from "@/components/editor/EditorSectionNavigation";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import type { ResumeEditor } from "@/hooks/useResumeEditor";
 
-export function EditorWorkspace({ editor, resumeId }: { editor: ResumeEditor; resumeId: string }) {
-  const { t } = useTranslation();
-  return <div className="min-h-screen bg-background text-stone-900"><GrainOverlay /><Header /><main className="relative z-10 pb-20 pt-24 lg:pt-32"><div className="fixed bottom-6 right-6 z-50 lg:hidden"><Button onClick={() => editor.setShowMobilePreview(!editor.showMobilePreview)} className="rounded-full bg-stone-900 px-6 py-4 text-white hover:bg-orange-600"><FileText className="mr-2 h-5 w-5" />{editor.showMobilePreview ? t("editor.edit") : t("editor.preview")}</Button></div><EditorToolbar editor={editor} /><div className="container-custom"><div className="grid items-start gap-8 lg:grid-cols-12 lg:gap-12"><EditorSectionNavigation active={editor.activeSection} onChange={editor.setActiveSection} /><div className={`space-y-8 lg:col-span-5 ${editor.showMobilePreview ? "hidden lg:block" : "block"}`}><EditorForm editor={editor} /></div><div className={`sticky top-36 lg:col-span-5 ${editor.showMobilePreview ? "block" : "hidden lg:block"}`}><ResumePreview template={editor.template} onTemplateChange={editor.setTemplate} personalInfo={editor.personalInfo} summary={editor.summary} experiences={editor.experiences} projects={editor.projects} educations={editor.educations} skills={editor.skills} certifications={editor.certifications} languages={editor.languages} /></div></div><EditorBottomBar editor={editor} resumeId={resumeId} /></div></main></div>;
+const JsoncEditor = dynamic(() => import("@/components/editor/JsoncEditor"), { ssr: false, loading: () => <div className="flex flex-1 items-center justify-center bg-[#101820] text-sm text-stone-400">Carregando editor…</div> });
+
+export function EditorWorkspace({ editor }: { editor: ResumeEditor; resumeId: string }) {
+  const preview = <ResumePreview template={editor.template} onTemplateChange={editor.setTemplate} personalInfo={editor.personalInfo} summary={editor.summary} experiences={editor.experiences} projects={editor.projects} educations={editor.educations} skills={editor.skills} certifications={editor.certifications} languages={editor.languages} />;
+
+  return <div className="min-h-screen bg-[#eeece7] text-stone-900">
+    <Header />
+    <main className="flex h-screen flex-col pt-16 lg:pt-20">
+      <EditorToolbar editor={editor} />
+      <div className="relative grid min-h-0 flex-1 lg:grid-cols-2">
+        <section className={`${editor.showMobilePreview ? "hidden lg:flex" : "flex"} min-h-0 flex-col border-r border-stone-300 bg-[#f7f5f0]`} aria-label="Editor do currículo">
+          {editor.editorMode === "jsonc"
+            ? <JsoncEditor editor={editor} />
+            : <div className="grid min-h-0 flex-1 lg:grid-cols-[13rem_minmax(0,1fr)]"><div className="hidden overflow-y-auto border-r border-stone-200 p-4 lg:block"><EditorSectionNavigation active={editor.activeSection} onChange={editor.setActiveSection} /></div><div className="overflow-y-auto p-5 lg:p-8"><div className="mx-auto max-w-2xl"><EditorForm editor={editor} /></div></div></div>}
+        </section>
+        <section className={`${editor.showMobilePreview ? "block" : "hidden lg:block"} min-h-0 overflow-y-auto bg-[#d8d5ce] p-3 sm:p-5 lg:p-7`} aria-label="Visualização do currículo">
+          <div className="mx-auto max-w-[820px]">{preview}</div>
+        </section>
+        <button type="button" onClick={() => editor.setShowMobilePreview(!editor.showMobilePreview)} className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-full bg-stone-900 px-5 py-3 text-sm font-semibold text-white shadow-xl lg:hidden">
+          {editor.showMobilePreview ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{editor.showMobilePreview ? "Editar" : "Visualizar"}
+        </button>
+      </div>
+    </main>
+  </div>;
 }

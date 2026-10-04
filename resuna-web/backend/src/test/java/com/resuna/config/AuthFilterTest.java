@@ -1,5 +1,6 @@
 package com.resuna.config;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.resuna.service.UserProfileService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +26,7 @@ class AuthFilterTest {
     @BeforeEach
     void setUp() {
         userProfileService = mock(UserProfileService.class);
-        authFilter = new AuthFilter(userProfileService);
+        authFilter = new AuthFilter(userProfileService, mock(FirebaseAuth.class));
         chain = mock(FilterChain.class);
     }
 
@@ -89,7 +90,7 @@ class AuthFilterTest {
         authFilter.doFilter(req, res, chain);
 
         assertEquals(401, res.getStatus());
-        assertEquals("application/json", res.getContentType());
+        assertTrue(res.getContentType().startsWith("application/json"));
         assertTrue(res.getContentAsString().contains("Unauthorized"));
         verify(chain, never()).doFilter(any(), any());
     }

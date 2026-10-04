@@ -39,8 +39,11 @@ public class AuthFilter implements Filter {
     @Value("${app.super-admin-email:}")
     private String superAdminEmail;
 
-    public AuthFilter(UserProfileService userProfileService) {
+    private final FirebaseAuth firebaseAuth;
+
+    public AuthFilter(UserProfileService userProfileService, FirebaseAuth firebaseAuth) {
         this.userProfileService = userProfileService;
+        this.firebaseAuth = firebaseAuth;
     }
 
     @Override
@@ -83,7 +86,7 @@ public class AuthFilter implements Filter {
         }
 
         try {
-            FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+            FirebaseToken decodedToken = firebaseAuth.verifyIdToken(token);
 
             // Set user info in request attributes for use in controllers
             httpRequest.setAttribute("userId", decodedToken.getUid());

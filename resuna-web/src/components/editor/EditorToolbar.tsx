@@ -1,20 +1,56 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Download, FileDown, FileText, Globe, Loader2, Save } from "lucide-react";
-import { useTranslation } from "@/contexts/LanguageContext";
-import { Button } from "@/components/ui/Button";
+import { ArrowLeft, Check, Code2, Download, FileDown, FileJson, Globe, Loader2, Save, Wand2 } from "lucide-react";
+import { useRef } from "react";
+import type { ResumeEditor } from "@/hooks/useResumeEditor";
 import TurnstileWrapper from "@/components/Turnstile";
-import type { EditorSection, ResumeEditor } from "@/hooks/useResumeEditor";
+
+const actionClass = "inline-flex h-9 items-center gap-2 rounded-md border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50";
 
 export function EditorToolbar({ editor }: { editor: ResumeEditor }) {
-  const { t } = useTranslation();
-  return <div className="sticky top-20 z-40 mb-12 border-b border-stone-200/60 bg-[#F8F6F1]/95 shadow-sm backdrop-blur-md"><div className="container-custom py-4">
-    <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center"><div className="flex items-center gap-4"><Link href="/resumes" aria-label={t("common.backToResumes")} className="rounded-full p-2 text-stone-500 hover:bg-stone-200/50 hover:text-stone-900"><ArrowLeft className="h-5 w-5" /></Link><div><input value={editor.title} onChange={(event) => editor.setTitle(event.target.value)} className="w-full min-w-[200px] border-b border-transparent bg-transparent p-0 text-2xl font-semibold text-stone-900 placeholder-stone-400 focus:border-orange-500 focus:outline-none" placeholder={t("editor.untitledMasterpiece")} /><div className="mt-1 flex flex-wrap items-center gap-3 text-xs uppercase tracking-wide text-stone-500"><span className={editor.isSaving ? "text-orange-600" : ""}>{editor.isSaving ? t("editor.savingChanges") : t("editor.lastSaved", { time: editor.lastSaved })}</span><span className={editor.completeness.score >= 80 ? "text-green-600" : "text-orange-500"}>{editor.completeness.score}% completo</span>{editor.atsScore !== null && <span className="text-green-600">{t("editor.atsScore", { score: editor.atsScore })}</span>}</div></div></div>
-      <div className="flex flex-wrap gap-2"><Button variant="ghost" size="sm" onClick={() => editor.download("pdf")} disabled={editor.downloadingPdf}><Download className="mr-2 h-4 w-4" />PDF</Button><Button variant="ghost" size="sm" onClick={() => editor.download("docx")} disabled={editor.downloadingDocx}><FileDown className="mr-2 h-4 w-4" />DOCX</Button><Button variant="ghost" size="sm" onClick={editor.translateResume} disabled={editor.isTranslating || (!!editor.turnstileSiteKey && !editor.translateCaptchaToken)}><Globe className="mr-2 h-4 w-4" />{editor.isTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : "EN"}</Button><Button size="sm" onClick={editor.save} disabled={editor.isSaving}><Save className="mr-2 h-4 w-4" />{t("editor.saveDraft")}</Button></div>
+  const fileRef = useRef<HTMLInputElement>(null);
+  const importFile = async (file?: File) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".jsonc") || file.size > 1024 * 1024) {
+      window.alert("Escolha um arquivo .jsonc de até 1 MB."); return;
+    }
+    if (editor.isDirty && !window.confirm("Substituir as alterações não salvas pelo arquivo importado?")) return;
+    const source = await file.text();
+    if (!editor.importJsonc(source)) { window.alert("O arquivo contém erros e não substituiu o currículo atual."); return; }
+  };
+
+  return <div className="border-y border-stone-200 bg-[#fbfaf7] px-3 py-2 lg:px-5">
+    <div className="flex flex-wrap items-center gap-2">
+      <Link href="/resumes" aria-label="Voltar aos currículos" className="mr-1 rounded-md p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900"><ArrowLeft className="h-4 w-4" /></Link>
+      <div className="flex rounded-md border border-stone-200 bg-white p-0.5" role="group" aria-label="Modo de edição">
+        <button type="button" onClick={() => editor.setEditorMode("visual")} aria-pressed={editor.editorMode === "visual"} className={`rounded px-3 py-1.5 text-xs font-semibold ${editor.editorMode === "visual" ? "bg-stone-900 text-white" : "text-stone-500"}`}>Visual</button>
+        <button type="button" onClick={() => editor.setEditorMode("jsonc")} aria-pressed={editor.editorMode === "jsonc"} className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold ${editor.editorMode === "jsonc" ? "bg-stone-900 text-white" : "text-stone-500"}`}><Code2 className="h-3.5 w-3.5" />Código JSONC</button>
+      </div>
+      <div className="hidden min-w-0 flex-1 items-center gap-3 border-l border-stone-200 pl-3 sm:flex">
+        {editor.editorMode === "visual"
+          ? <input value={editor.title} onChange={(event) => editor.setTitle(event.target.value)} aria-label="Título do currículo" className="min-w-0 max-w-64 bg-transparent font-serif text-sm font-semibold text-stone-900 outline-none" />
+          : <span className="truncate font-mono text-xs font-semibold text-stone-600">{(editor.title || "curriculo").replace(/\s+/g, "-").toLowerCase()}.jsonc</span>}
+        <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${editor.isValid ? "text-emerald-700" : "text-red-700"}`}><span className={`h-2 w-2 rounded-full ${editor.isValid ? "bg-emerald-500" : "bg-red-500"}`} />{editor.isValid ? "JSONC válido" : `${editor.diagnostics.length} erro${editor.diagnostics.length === 1 ? "" : "s"}`}</span>
+        <span className="shrink-0 text-xs text-stone-400">{editor.isDirty ? "Alterações não salvas" : "Salvo"}</span>
+      </div>
+
+      <button type="button" onClick={() => editor.validate()} className={actionClass}><Check className="h-3.5 w-3.5" />Validar</button>
+      <button type="button" onClick={editor.formatJsonc} className={actionClass}><Wand2 className="h-3.5 w-3.5" />Formatar</button>
+      <button type="button" onClick={() => fileRef.current?.click()} className={`${actionClass} hidden md:inline-flex`}><FileJson className="h-3.5 w-3.5" />Importar</button>
+      <input ref={fileRef} type="file" accept=".jsonc,application/json" className="hidden" onChange={(event) => { void importFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+      <button type="button" onClick={editor.exportJsonc} className={`${actionClass} hidden md:inline-flex`}><FileDown className="h-3.5 w-3.5" />Exportar</button>
+      <button type="button" onClick={() => void editor.save()} disabled={editor.isSaving || !editor.isValid} className={actionClass}>{editor.isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Salvar</button>
+      <button type="button" onClick={editor.downloadTypst} disabled={editor.downloadingTypst || !editor.isValid} className="inline-flex h-9 items-center gap-2 rounded-md bg-[#c9573f] px-4 text-xs font-bold text-white transition hover:bg-[#a94431] disabled:opacity-50">{editor.downloadingTypst ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Baixar PDF</button>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <button type="button" onClick={editor.translateResume} disabled={editor.isTranslating || (!!editor.turnstileSiteKey && !editor.translateCaptchaToken)} className={`${actionClass} border-[#e8d5ca] text-[#8e4e32] hover:bg-[#fbf3ee]`}>
+          {editor.isTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+          <span className="hidden sm:inline">Traduzir para inglês</span><span className="sm:hidden">Traduzir</span>
+        </button>
+        <button type="button" onClick={() => editor.download("docx")} disabled={editor.downloadingDocx} aria-label="Baixar DOCX" title="Baixar DOCX" className="rounded-md border border-stone-200 bg-white p-2 text-stone-500 hover:bg-stone-50 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">{editor.downloadingDocx ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}</button>
+      </div>
     </div>
-    {editor.turnstileSiteKey && <div className="mt-3 max-w-md"><p className="mb-2 text-xs text-stone-500">{t("editor.translateCaptchaHint")}</p><TurnstileWrapper size="compact" onSuccess={editor.setTranslateCaptchaToken} onError={() => editor.setTranslateCaptchaToken(null)} onExpire={() => editor.setTranslateCaptchaToken(null)} /></div>}
-    {editor.error && <div role="alert" className="mt-3 rounded-sm border-l-2 border-red-500 bg-red-50 p-3 text-sm font-medium text-red-800">{editor.error}</div>}
-    <div className="mt-6 flex gap-5 overflow-x-auto pb-1 lg:hidden">{(["basics", "experience", "projects", "education", "skills", "certifications", "languages"] as EditorSection[]).map((section) => <button key={section} type="button" onClick={() => editor.setActiveSection(section)} className={`whitespace-nowrap pb-2 text-sm ${editor.activeSection === section ? "border-b-2 border-orange-600 font-semibold text-stone-900" : "text-stone-500"}`}>{t(`editor.tabs.${section}`)}</button>)}</div>
-  </div></div>;
+    {editor.error && <p role="alert" className="mt-2 border-l-2 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-800">{editor.error}</p>}
+    {editor.turnstileSiteKey && !editor.translateCaptchaToken && <div className="mt-2 flex items-center gap-3 text-xs text-stone-500"><span>Confirme para usar a tradução:</span><TurnstileWrapper size="compact" onSuccess={editor.setTranslateCaptchaToken} onError={() => editor.setTranslateCaptchaToken(null)} onExpire={() => editor.setTranslateCaptchaToken(null)} /></div>}
+  </div>;
 }

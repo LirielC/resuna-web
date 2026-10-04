@@ -1,5 +1,6 @@
 package com.resuna.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import java.time.Instant;
 import java.util.List;
 
@@ -284,6 +285,7 @@ public class Resume {
     }
 
     public static class Experience {
+        @JsonAlias("position")
         @Size(max = 200, message = "Job title must not exceed 200 characters")
         private String title;
 
@@ -300,6 +302,9 @@ public class Resume {
         private String endDate;
 
         private boolean current;
+
+        @Size(max = 2000, message = "Experience description must not exceed 2000 characters")
+        private String description;
 
         @Size(max = 30, message = "Experience must not exceed 30 bullet points")
         private List<@Size(max = 1000, message = "Each bullet point must not exceed 1000 characters") String> bullets;
@@ -353,6 +358,14 @@ public class Resume {
 
         public void setCurrent(boolean current) {
             this.current = current;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
         }
 
         public List<String> getBullets() {

@@ -12,9 +12,8 @@ import {
   LogOut,
   User,
   FileStack,
+  SearchCheck,
   Shield,
-  BarChart3,
-  Mail,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,15 +61,10 @@ export function Header() {
 
 
 
-  const navLinks: Array<{ href: string; label: string; icon?: LucideIcon }> = user
-    ? [
-      { href: "/resumes", label: t("header.myResumes"), icon: FileStack },
-      { href: "/cover-letters", label: t("header.coverLetters"), icon: Mail },
-      { href: "/billing", label: t("header.credits"), icon: BarChart3 },
-    ]
-    : [
-      { href: "/#features", label: t("header.features") },
-    ];
+  const navLinks: Array<{ href: string; label: string; icon?: LucideIcon }> = [
+    ...(user ? [{ href: "/resumes", label: t("header.myResumes"), icon: FileStack }] : [{ href: "/#features", label: t("header.features") }]),
+    { href: "/resumes/upload", label: t("header.atsAnalyzer"), icon: SearchCheck },
+  ];
 
   return (
     <>
@@ -78,10 +72,7 @@ export function Header() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-          ? "glass shadow-sm"
-          : "bg-transparent"
-          }`}
+        className={`fixed top-0 left-0 right-0 z-50 border-b border-stone-200/80 bg-[#f8f6f1]/95 backdrop-blur-md transition-shadow duration-300 ${isScrolled ? "shadow-sm" : ""}`}
       >
         <div className="container-custom">
           <nav className="flex items-center justify-between h-16 lg:h-20">
@@ -90,7 +81,7 @@ export function Header() {
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <FileText className="w-4 h-4 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              <span className="font-display text-xl font-semibold text-gray-900 dark:text-white tracking-tight">
                 Resuna
               </span>
             </Link>
