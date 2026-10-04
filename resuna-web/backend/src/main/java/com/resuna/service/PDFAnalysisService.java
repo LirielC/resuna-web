@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.resuna.model.PDFAnalysisResponse;
@@ -35,6 +36,7 @@ public class PDFAnalysisService {
     private final PDFExtractionService pdfExtractionService;
     private final OpenRouterService openRouterService;
     private final PDFSecurityService pdfSecurityService;
+    private final PDFKeywordMatcher keywordMatcher;
 
     // Synonym mappings for common tech terms (English + Portuguese)
     private static final Map<String, Set<String>> SYNONYM_MAP = new HashMap<>();
@@ -205,11 +207,19 @@ public class PDFAnalysisService {
             // PT-BR: Industries
             "tecnologia", "financeiro", "varejo", "logística", "telecomunicações", "saúde"));
 
+    @Autowired
     public PDFAnalysisService(PDFExtractionService pdfExtractionService, OpenRouterService openRouterService,
-            PDFSecurityService pdfSecurityService) {
+            PDFSecurityService pdfSecurityService, PDFKeywordMatcher keywordMatcher) {
         this.pdfExtractionService = pdfExtractionService;
         this.openRouterService = openRouterService;
         this.pdfSecurityService = pdfSecurityService;
+        this.keywordMatcher = keywordMatcher;
+    }
+
+    /** Compatibility constructor for isolated unit tests. */
+    public PDFAnalysisService(PDFExtractionService pdfExtractionService, OpenRouterService openRouterService,
+            PDFSecurityService pdfSecurityService) {
+        this(pdfExtractionService, openRouterService, pdfSecurityService, new PDFKeywordMatcher());
     }
 
     /**
@@ -425,39 +435,7 @@ public class PDFAnalysisService {
      * Check if text contains keyword or any of its synonyms (word boundary aware).
      */
     private boolean containsKeyword(String text, String keyword) {
-        // Check the keyword itself
-        if (matchesWord(text, keyword)) {
-            return true;
-        }
-
-        // Check synonyms of this keyword
-        Set<String> synonyms = SYNONYM_MAP.get(keyword.toLowerCase());
-        if (synonyms != null) {
-            for (String synonym : synonyms) {
-                if (matchesWord(text, synonym)) {
-                    return true;
-                }
-            }
-        }
-
-        // Check if this keyword is a synonym of something else
-        for (Map.Entry<String, Set<String>> entry : SYNONYM_MAP.entrySet()) {
-            if (entry.getValue().contains(keyword.toLowerCase())) {
-                if (matchesWord(text, entry.getKey())) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if text contains exact word match (word boundary aware).
-     */
-    private boolean matchesWord(String text, String word) {
-        String pattern = "(?i)\\b" + Pattern.quote(word) + "\\b";
-        return Pattern.compile(pattern).matcher(text).find();
+        return keywordMatcher.contains(text, keyword, SYNONYM_MAP);
     }
 
     /**

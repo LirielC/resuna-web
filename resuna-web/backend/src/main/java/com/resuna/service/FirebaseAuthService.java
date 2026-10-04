@@ -14,12 +14,17 @@ import java.util.Map;
 public class FirebaseAuthService {
     
     private static final Logger logger = LoggerFactory.getLogger(FirebaseAuthService.class);
+    private final FirebaseAuth firebaseAuth;
+
+    public FirebaseAuthService(FirebaseAuth firebaseAuth) {
+        this.firebaseAuth = firebaseAuth;
+    }
 
     /**
      * Verify a Firebase ID token and return user information
      */
     public Map<String, Object> verifyToken(String idToken) throws FirebaseAuthException {
-        FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
+        FirebaseToken decodedToken = firebaseAuth.verifyIdToken(idToken);
         
         Map<String, Object> user = new HashMap<>();
         user.put("uid", decodedToken.getUid());
@@ -52,7 +57,7 @@ public class FirebaseAuthService {
         }
         
         try {
-            FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(token);
+            FirebaseToken decodedToken = firebaseAuth.verifyIdToken(token);
             return decodedToken.getUid();
         } catch (FirebaseAuthException e) {
             logger.warn("Invalid Firebase token: {}", e.getMessage());

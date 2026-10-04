@@ -258,13 +258,14 @@ export const resumeApi = {
         // Use explicit locale, fallback to resume's own language field, then pt-BR
         const effectiveLocale = locale || resume.language || 'pt-BR';
         const localeParam = `?locale=${effectiveLocale}`;
+        const { sourceJsonc: _sourceJsonc, ...document } = resume;
         const response = await fetch(`${API_BASE_URL}/api/resumes/export/pdf${localeParam}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify(resume),
+            body: JSON.stringify(document),
         });
 
         if (!response.ok) {
@@ -272,6 +273,19 @@ export const resumeApi = {
             throw new Error(`Failed to download PDF: ${response.status} - ${errorText}`);
         }
 
+        return response.blob();
+    },
+
+    async downloadTypstPdf(resume: Resume, theme: "classic" | "modern" | "compact" = "classic"): Promise<Blob> {
+        const token = await getAuthToken();
+        if (!token) throw new Error('Not authenticated');
+        const { sourceJsonc: _sourceJsonc, ...document } = resume;
+        const response = await fetch(`${API_BASE_URL}/api/resumes/export/typst?theme=${theme}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(document),
+        });
+        if (!response.ok) throw new Error(`Failed to download Typst PDF: ${response.status}`);
         return response.blob();
     },
 
@@ -284,13 +298,14 @@ export const resumeApi = {
         if (!token) throw new Error('Not authenticated');
 
         const effectiveLocale = locale || resume.language || 'pt-BR';
+        const { sourceJsonc: _sourceJsonc, ...document } = resume;
         const response = await fetch(`${API_BASE_URL}/api/resumes/export/docx?locale=${effectiveLocale}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
             },
-            body: JSON.stringify(resume),
+            body: JSON.stringify(document),
         });
 
         if (!response.ok) {

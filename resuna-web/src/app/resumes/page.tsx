@@ -10,17 +10,14 @@ import {
   Download,
   Trash2,
   Clock,
-  Sparkles,
   Loader2,
   AlertCircle,
-  Upload,
   Copy,
   X,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { resumeApi, triggerDownload } from "@/lib/api";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { computeCompleteness } from "@/lib/completeness";
 import type { Resume } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { THEME } from "@/lib/theme";
@@ -33,6 +30,7 @@ export default function ResumesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<"recent" | "title">("recent");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -111,13 +109,14 @@ export default function ResumesPage() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return t("resumes.draft");
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const searchedResumes = resumes.filter((resume) =>
-    resume.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    resume.personalInfo?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const searchedResumes = resumes
+    .filter((resume) => resume.title?.toLowerCase().includes(searchQuery.toLowerCase()) || resume.personalInfo?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => sortOrder === "title"
+      ? (a.title || "").localeCompare(b.title || "", "pt-BR")
+      : new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
 
   return (
     <ProtectedRoute>
@@ -138,34 +137,31 @@ export default function ResumesPage() {
       <Header />
 
       <main className="relative z-10 pt-24 lg:pt-32 pb-20">
-        <div className="container-custom">
+        <div className="container-custom max-w-7xl">
           {/* Header Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 border-b border-stone-200/60 pb-8"
+            className="mb-8 flex flex-col gap-6 border-b border-stone-200 pb-7 md:flex-row md:items-end md:justify-between"
           >
             <div>
               <h1 className={`${THEME.fontDisplay} text-4xl lg:text-5xl font-medium text-stone-900 tracking-tight mb-3`}>
-                {t('resumes.theArchive')}
+                Meus currículos
               </h1>
-              <p className="text-stone-500 font-serif italic text-lg">
-                {t('resumes.archiveSubtitle')}
-              </p>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">Crie, organize e atualize seus currículos em um só lugar.</p>
             </div>
 
-            <div className="w-full md:w-[26rem] space-y-3">
-              <div className="relative">
-                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder={t('resumes.searchPlaceholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-4 py-2 bg-transparent border-b border-stone-300 focus:border-orange-600 focus:outline-none transition-colors font-serif placeholder-stone-400 text-stone-800"
-                />
+            <div className="flex w-full flex-col gap-3 sm:flex-row md:w-auto">
+              <label className="relative min-w-0 flex-1 sm:min-w-64 md:w-72">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" aria-hidden="true" />
+                <input type="search" aria-label="Buscar currículos" placeholder="Buscar currículos" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="input-editorial h-11 pl-9" />
+              </label>
+              <select aria-label="Ordenar currículos" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as "recent" | "title")} className="input-editorial h-11 w-full sm:w-44">
+                <option value="recent">Mais recentes</option>
+                <option value="title">Ordem alfabética</option>
+              </select>
+              <Link href="/resumes/new" className="btn-primary h-11 shrink-0 gap-2 px-4"><Plus className="h-4 w-4" />Novo currículo</Link>
               </div>
-            </div>
           </motion.div>
 
           {/* Error Message */}
@@ -192,39 +188,8 @@ export default function ResumesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+              className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
-
-              {/* New Resume ACTION CARD */}
-              <Link href="/resumes/new" className="group">
-                <div className="h-full min-h-[320px] bg-white border border-stone-200 border-dashed hover:border-orange-300 hover:bg-orange-50/10 rounded-sm flex flex-col items-center justify-center gap-4 transition-all duration-300 group-hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer relative overflow-hidden">
-                  <div className="w-16 h-16 rounded-full bg-stone-50 border border-stone-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Plus className="w-6 h-6 text-stone-400 group-hover:text-orange-600 transition-colors" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className={`${THEME.fontDisplay} text-xl font-medium text-stone-900 mb-1`}>{t('resumes.newDraft')}</h3>
-                    <p className="text-stone-500 text-sm italic">{t('resumes.startFreshDocument')}</p>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Upload Resume ACTION CARD */}
-              <Link href="/resumes/upload" className="group">
-                <div className="h-full min-h-[320px] bg-stone-50 border border-stone-200/60 hover:border-stone-300 rounded-sm flex flex-col items-center justify-center gap-4 transition-all duration-300 group-hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Sparkles className="w-4 h-4 text-stone-400" />
-                  </div>
-                  <div className="w-16 h-16 rounded-full bg-white border border-stone-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Upload className="w-6 h-6 text-stone-400 group-hover:text-stone-700 transition-colors" />
-                  </div>
-                  <div className="text-center px-6">
-                    <h3 className={`${THEME.fontDisplay} text-xl font-medium text-stone-900 mb-1`}>{t('resumes.analyzePdf')}</h3>
-                    <p className="text-stone-500 text-sm italic">{t('resumes.importExistingOptimize')}</p>
-                  </div>
-                </div>
-              </Link>
-
-              {/* Resume "Paper Sheet" Cards */}
               {searchedResumes.map((resume, index) => (
                 <motion.div
                   key={resume.id}
@@ -233,85 +198,31 @@ export default function ResumesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * (index + 1) }}
                 >
-                  <Link href={`/resumes/${resume.id}`}>
-                    <div className="group relative bg-white h-full min-h-[320px] shadow-sm hover:shadow-xl transition-all duration-500 rounded-sm border-t-4 border-t-stone-200 hover:border-t-orange-500 p-8 flex flex-col justify-between hover:-translate-y-1">
-
-                      {/* Paper Content Preview (Abstract) */}
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-start">
-                          <FileText className="w-8 h-8 text-stone-300 group-hover:text-orange-600 transition-colors duration-500" strokeWidth={1.5} />
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
-                            {/* Quick Actions overlay on hover */}
-                            <button
-                              onClick={(e) => handleDownloadPdf(e, resume)}
-                              className="p-1.5 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700"
-                              title="Download PDF"
-                            >
-                              {downloadingId === resume.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={(e) => handleDuplicate(e, resume.id!)}
-                              className="p-1.5 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700"
-                              title="Duplicar"
-                            >
-                              {duplicatingId === resume.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={(e) => handleDelete(e, resume.id!)}
-                              className="p-1.5 hover:bg-red-50 rounded text-stone-400 hover:text-red-600"
-                              title="Delete"
-                            >
-                              {deletingId === resume.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h3 className={`${THEME.fontDisplay} text-xl font-semibold text-stone-900 leading-tight mb-2 group-hover:text-orange-900 transition-colors`}>
-                            {resume.title || t('resumes.untitledMasterpiece')}
-                          </h3>
-                          <p className="text-stone-500 text-sm font-serif truncate">
-                            {resume.personalInfo?.fullName || t('resumes.noNameProvided')}
-                          </p>
-                        </div>
-
-                        {/* Abstract Lines */}
-                        <div className="space-y-2 opacity-30 group-hover:opacity-50 transition-opacity pt-2">
-                          <div className="h-1 w-full bg-stone-200 rounded-full" />
-                          <div className="h-1 w-3/4 bg-stone-200 rounded-full" />
-                          <div className="h-1 w-5/6 bg-stone-200 rounded-full" />
-                        </div>
+                  <article className="group overflow-hidden rounded-xl border border-stone-200 bg-white transition-colors hover:border-[#d4a18a]">
+                    <Link href={`/resumes/${resume.id}`} className="block p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600">
+                      <div aria-hidden="true" className="mx-auto flex aspect-[1.25/1] max-h-40 max-w-48 flex-col overflow-hidden border border-stone-200 bg-[#fffefb] p-3 shadow-sm">
+                        <p className="truncate text-center font-display text-[9px] font-semibold text-stone-800">{resume.personalInfo?.fullName || "Seu nome"}</p>
+                        <div className="mt-1 h-px bg-stone-300" />
+                        <p className="mt-2 text-[5px] font-bold uppercase tracking-widest text-[#a64b28]">Resumo</p>
+                        <div className="mt-1 space-y-1"><div className="h-1 w-full bg-stone-200"/><div className="h-1 w-4/5 bg-stone-200"/></div>
+                        <p className="mt-2 text-[5px] font-bold uppercase tracking-widest text-[#a64b28]">Experiência</p>
+                        <div className="mt-1 space-y-1"><div className="h-1 w-full bg-stone-200"/><div className="h-1 w-11/12 bg-stone-200"/><div className="h-1 w-3/4 bg-stone-200"/></div>
+                        <p className="mt-2 text-[5px] font-bold uppercase tracking-widest text-[#a64b28]">Formação · Habilidades</p>
+                        <div className="mt-1 h-1 w-5/6 bg-stone-200"/>
                       </div>
-
-                      {/* Completeness Bar */}
-                      {(() => {
-                        const { score, missingFields } = computeCompleteness(resume);
-                        const color = score >= 80 ? "bg-green-500" : score >= 50 ? "bg-orange-500" : "bg-red-400";
-                        return (
-                          <div className="pt-3" title={missingFields.length > 0 ? `Faltando: ${missingFields.slice(0, 3).join(', ')}${missingFields.length > 3 ? '…' : ''}` : 'Currículo completo!'}>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-stone-400 font-mono uppercase tracking-wider">Completude</span>
-                              <span className={`text-[10px] font-mono font-semibold ${score >= 80 ? 'text-green-600' : score >= 50 ? 'text-orange-600' : 'text-red-500'}`}>{score}%</span>
-                            </div>
-                            <div className="h-1 bg-stone-100 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${score}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* Footer */}
-                      <div className="border-t border-stone-100 pt-4 mt-4">
-                        <div className="flex items-center justify-between text-xs text-stone-400 font-mono tracking-wider uppercase">
-                          <span className="flex items-center gap-1.5">
-                            <Clock className="w-3 h-3" />
-                            {formatDate(resume.updatedAt)}
-                          </span>
-                          <span className="group-hover:text-orange-600 transition-colors">{t('resumes.editDocument')}</span>
-                        </div>
+                      <h2 className="mt-4 truncate font-display text-lg font-semibold text-stone-900 group-hover:text-[#a64b28]">{resume.title || t('resumes.untitledMasterpiece')}</h2>
+                      <p className="mt-1 truncate text-sm text-stone-600">{resume.personalInfo?.fullName || t('resumes.noNameProvided')}</p>
+                      <span className="mt-3 inline-flex rounded-full bg-[#f7f1ec] px-2.5 py-1 text-[11px] font-medium text-[#8e4e32]">Uma coluna · ATS</span>
+                    </Link>
+                    <footer className="flex items-center justify-between border-t border-stone-100 px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs text-stone-500"><Clock className="h-3.5 w-3.5"/>{formatDate(resume.updatedAt)}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={(e) => handleDownloadPdf(e, resume)} aria-label="Baixar PDF" title="Baixar PDF" className="rounded-md p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">{downloadingId === resume.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Download className="h-4 w-4"/>}</button>
+                        <button onClick={(e) => handleDuplicate(e, resume.id!)} aria-label="Duplicar currículo" title="Duplicar currículo" className="rounded-md p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600">{duplicatingId === resume.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Copy className="h-4 w-4"/>}</button>
+                        <button onClick={(e) => handleDelete(e, resume.id!)} aria-label="Excluir currículo" title="Excluir currículo" className="rounded-md p-2 text-stone-500 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600">{deletingId === resume.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4"/>}</button>
                       </div>
-                    </div>
-                  </Link>
+                    </footer>
+                  </article>
                 </motion.div>
               ))}
 
@@ -319,10 +230,19 @@ export default function ResumesPage() {
           )}
 
           {/* Empty Search State */}
+          {!isLoading && resumes.length === 0 && (
+            <section className="rounded-xl border border-dashed border-stone-300 bg-white/70 px-5 py-14 text-center">
+              <FileText className="mx-auto mb-4 h-9 w-9 text-stone-400" aria-hidden="true" />
+              <h2 className="font-display text-2xl font-medium text-stone-900">Seu próximo currículo começa aqui</h2>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-600">Crie seu primeiro documento e organize suas experiências em um modelo claro e de uma coluna.</p>
+              <Link href="/resumes/new" className="btn-primary mt-5 inline-flex h-11 gap-2 px-5"><Plus className="h-4 w-4"/>Criar currículo</Link>
+            </section>
+          )}
+
           {!isLoading && searchedResumes.length === 0 && resumes.length > 0 && (
-            <div className="text-center py-16 opacity-50">
-              <FileText className="w-12 h-12 mx-auto text-stone-300 mb-4" />
-              <p className="text-stone-500 font-serif italic text-lg">{t('resumes.noDocumentsFound')}</p>
+            <div className="rounded-xl border border-stone-200 bg-white px-5 py-12 text-center">
+              <Search className="mx-auto mb-3 h-6 w-6 text-stone-400" aria-hidden="true" />
+              <p className="text-sm text-stone-600">{t('resumes.noDocumentsFound')}</p>
             </div>
           )}
 

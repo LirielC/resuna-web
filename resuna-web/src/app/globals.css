@@ -124,23 +124,23 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-white rounded-2xl transition-all duration-300;
-    @apply bg-orange-500 hover:bg-orange-600 active:scale-[0.98];
-    @apply shadow-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-white rounded-xl transition-colors duration-200;
+    @apply bg-orange-600 hover:bg-orange-700 active:bg-orange-800;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-medium rounded-2xl transition-all duration-300;
-    @apply bg-white text-ink border border-border hover:bg-stone-50 hover:border-stone-300 hover:shadow-soft active:scale-[0.98];
+    @apply inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-xl transition-colors duration-200;
+    @apply bg-white text-ink border border-border hover:bg-stone-50 hover:border-stone-300;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .card-editorial {
-    @apply relative bg-white border border-border/60 rounded-3xl shadow-soft overflow-hidden transition-all duration-300;
+    @apply relative bg-white border border-border rounded-xl shadow-sm overflow-hidden transition-all duration-200;
   }
 
   .card-editorial:hover {
-    @apply shadow-elevated -translate-y-1;
+    @apply shadow-md -translate-y-0.5;
   }
 
   .card-editorial > div {
@@ -148,10 +148,14 @@
   }
 
   .input-editorial {
-    @apply w-full px-4 py-3.5 text-sm rounded-2xl transition-all duration-300;
+    @apply w-full px-4 py-3 text-sm rounded-xl transition-colors duration-200;
     font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-    @apply bg-white border border-border text-ink placeholder:text-stone-400 shadow-sm;
-    @apply focus:outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-500/10 hover:border-stone-300;
+    @apply bg-white border border-border text-ink placeholder:text-stone-400;
+    @apply hover:border-stone-300 focus:border-orange-500 focus:outline-none;
+  }
+
+  .input-editorial:focus-visible {
+    box-shadow: 0 0 0 3px rgb(249 115 22 / 20%);
   }
 
   .badge-editorial {

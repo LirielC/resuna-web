@@ -13,6 +13,21 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+export const isFirebaseConfigured = Object.values(firebaseConfig).every(Boolean);
+
+// Keep local builds and static generation usable without exposing real credentials.
+// Auth is explicitly disabled by AuthProvider when this fallback is active.
+const safeFirebaseConfig = isFirebaseConfigured
+    ? firebaseConfig
+    : {
+        apiKey: 'resuna-local-build-key',
+        authDomain: 'resuna-local-build.firebaseapp.com',
+        projectId: 'resuna-local-build',
+        storageBucket: 'resuna-local-build.appspot.com',
+        messagingSenderId: '000000000000',
+        appId: 'resuna-local-build-app',
+    };
+
 // Validate on server-side only (client gets values inlined at build time)
 if (typeof window === 'undefined') {
     const missing = Object.entries(firebaseConfig)
@@ -24,7 +39,7 @@ if (typeof window === 'undefined') {
 }
 
 // Initialize Firebase only if not already initialized
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const app = getApps().length === 0 ? initializeApp(safeFirebaseConfig) : getApps()[0];
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

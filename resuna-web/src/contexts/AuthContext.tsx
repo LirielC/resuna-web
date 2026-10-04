@@ -7,7 +7,7 @@ import {
     signOut as firebaseSignOut,
     onAuthStateChanged
 } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
+import { auth, googleProvider, isFirebaseConfigured } from '@/lib/firebase';
 import { migrateLocalResumesToServerOnce } from '@/lib/api';
 import { setStorageUser } from '@/lib/storage';
 
@@ -28,6 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
+        if (!isFirebaseConfigured) {
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             // Namespace localStorage by userId so different accounts never share data
             setStorageUser(firebaseUser?.uid ?? null);
@@ -54,6 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [user?.uid, loading]);
 
     const signInWithGoogle = async () => {
+        if (!isFirebaseConfigured) {
+            throw new Error('Firebase não está configurado neste ambiente.');
+        }
         await signInWithPopup(auth, googleProvider);
     };
 

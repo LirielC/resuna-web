@@ -53,6 +53,7 @@ public class OpenRouterService {
 
     private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final OpenRouterResponseParser responseParser;
 
     @Autowired(required = false)
     @Lazy
@@ -94,13 +95,20 @@ public class OpenRouterService {
                 primaryModel, fallbackModels.size());
     }
 
-    public OpenRouterService(ObjectMapper objectMapper) {
+    @Autowired
+    public OpenRouterService(ObjectMapper objectMapper, OpenRouterResponseParser responseParser) {
         this.objectMapper = objectMapper;
+        this.responseParser = responseParser;
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .readTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
                 .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .build();
+    }
+
+    /** Compatibility constructor for isolated unit tests and small integrations. */
+    public OpenRouterService(ObjectMapper objectMapper) {
+        this(objectMapper, new OpenRouterResponseParser(objectMapper));
     }
 
     public RefineResponse refineBullets(Resume resume, RefineRequest request) throws IOException {
@@ -298,101 +306,8 @@ public class OpenRouterService {
             }
 
             String responseBody = response.body().string();
-            return extractTextFromOpenRouterResponse(responseBody);
+            return responseParser.extractText(responseBody);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private String extractTextFromOpenRouterResponse(String jsonResponse) throws IOException {
-        logger.debug("OpenRouter API response received (length: {})", jsonResponse.length());
-
-        Map<String, Object> response = objectMapper.readValue(jsonResponse, Map.class);
-
-        List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-        if (choices == null || choices.isEmpty()) {
-            logger.error("No choices in OpenRouter response. Response keys: {}", response.keySet());
-            throw new IOException("No choices in OpenRouter response");
-        }
-
-        Map<String, Object> choice = choices.get(0);
-        Map<String, Object> message = (Map<String, Object>) choice.get("message");
-
-        if (message == null) {
-            throw new IOException("No message in OpenRouter response");
-        }
-
-        String content = extractMessageContent(message);
-        Object finishReason = choice.get("finish_reason");
-
-        // Some thinking models (e.g. lfm-2.5-1.2b-thinking) put all output in "reasoning" and leave "content" empty
-        if (content == null || content.isBlank()) {
-            Object reasoning = message.get("reasoning");
-            if (reasoning instanceof String reasoningText && !reasoningText.isBlank()) {
-                logger.warn("Content was empty but reasoning field has {} chars — using reasoning as content", reasoningText.length());
-                content = reasoningText;
-            }
-        }
-
-        if (content == null || content.isBlank()) {
-            Object nativeFinishReason = choice.get("native_finish_reason");
-            Object reasoning = message.get("reasoning");
-            int reasoningChars = (reasoning instanceof String) ? ((String) reasoning).length() : 0;
-
-            throw new IOException(String.format(
-                    "No content in OpenRouter response (finish_reason=%s, native_finish_reason=%s, reasoning_chars=%d)",
-                    finishReason, nativeFinishReason, reasoningChars));
-        }
-
-        // Warn if response was truncated due to token limit
-        if ("length".equals(String.valueOf(finishReason))) {
-            logger.warn("⚠️ OpenRouter response was truncated (finish_reason=length). Consider increasing max_tokens.");
-        }
-
-        return content;
-    }
-
-    @SuppressWarnings("unchecked")
-    private String extractMessageContent(Map<String, Object> message) {
-        Object content = message.get("content");
-        if (content == null) {
-            return null;
-        }
-
-        if (content instanceof String) {
-            return (String) content;
-        }
-
-        // Some providers return content as structured parts:
-        // [{ "type": "text", "text": "..." }, ...]
-        if (content instanceof List<?> parts) {
-            StringBuilder sb = new StringBuilder();
-            for (Object part : parts) {
-                if (part instanceof Map<?, ?> partMap) {
-                    Object text = partMap.get("text");
-                    if (text instanceof String textPart) {
-                        if (sb.length() > 0) {
-                            sb.append("\n");
-                        }
-                        sb.append(textPart);
-                    }
-                } else if (part instanceof String textPart) {
-                    if (sb.length() > 0) {
-                        sb.append("\n");
-                    }
-                    sb.append(textPart);
-                }
-            }
-            return sb.toString();
-        }
-
-        if (content instanceof Map<?, ?> contentMap) {
-            Object text = contentMap.get("text");
-            if (text instanceof String textPart) {
-                return textPart;
-            }
-        }
-
-        return null;
     }
 
     private String buildRefinePrompt(List<String> bullets, RefineRequest request) {

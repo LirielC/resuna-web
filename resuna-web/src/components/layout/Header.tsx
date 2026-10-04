@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,7 +12,9 @@ import {
   LogOut,
   User,
   FileStack,
+  SearchCheck,
   Shield,
+  type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -21,6 +23,7 @@ export function Header() {
   const { user, loading, isAdmin, signOut } = useAuth();
   const { t } = useTranslation();
   const router = useRouter();
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -58,13 +61,10 @@ export function Header() {
 
 
 
-  const navLinks = user
-    ? [
-      { href: "/resumes", label: t("header.archives") },
-    ]
-    : [
-      { href: "/#features", label: t("header.features") },
-    ];
+  const navLinks: Array<{ href: string; label: string; icon?: LucideIcon }> = [
+    ...(user ? [{ href: "/resumes", label: t("header.myResumes"), icon: FileStack }] : [{ href: "/#features", label: t("header.features") }]),
+    { href: "/resumes/upload", label: t("header.atsAnalyzer"), icon: SearchCheck },
+  ];
 
   return (
     <>
@@ -72,10 +72,7 @@ export function Header() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-          ? "glass shadow-sm"
-          : "bg-transparent"
-          }`}
+        className={`fixed top-0 left-0 right-0 z-50 border-b border-stone-200/80 bg-[#f8f6f1]/95 backdrop-blur-md transition-shadow duration-300 ${isScrolled ? "shadow-sm" : ""}`}
       >
         <div className="container-custom">
           <nav className="flex items-center justify-between h-16 lg:h-20">
@@ -84,7 +81,7 @@ export function Header() {
               <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                 <FileText className="w-4 h-4 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+              <span className="font-display text-xl font-semibold text-gray-900 dark:text-white tracking-tight">
                 Resuna
               </span>
             </Link>
@@ -95,7 +92,11 @@ export function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm font-medium text-stone-600 hover:text-orange-600 transition-colors dark:text-stone-400 dark:hover:text-orange-400"
+                  aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
+                  className={`text-sm font-medium transition-colors dark:text-stone-400 dark:hover:text-orange-400 ${pathname === link.href || pathname.startsWith(`${link.href}/`)
+                    ? "text-orange-700 dark:text-orange-400"
+                    : "text-stone-600 hover:text-orange-600"
+                    }`}
                 >
                   {link.label}
                 </Link>
@@ -271,8 +272,13 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="block py-2 text-base font-medium text-stone-700 hover:text-orange-600 dark:text-stone-200"
+                  aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-base font-medium ${pathname === link.href || pathname.startsWith(`${link.href}/`)
+                    ? "bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300"
+                    : "text-stone-700 hover:bg-stone-100 hover:text-orange-600 dark:text-stone-200 dark:hover:bg-stone-800"
+                    }`}
                 >
+                  {link.icon && <link.icon className="h-4 w-4" aria-hidden="true" />}
                   {link.label}
                 </Link>
               ))}

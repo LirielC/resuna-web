@@ -5,6 +5,9 @@ export interface SkillGroup {
 }
 
 export interface Resume {
+    schemaVersion?: 1;
+    /** Original JSONC document. Frontend-only; excluded from export payloads. */
+    sourceJsonc?: string;
     id?: string;
     userId?: string;
     title: string;
@@ -22,6 +25,18 @@ export interface Resume {
     updatedAt?: string;
 }
 
+export interface JsoncDiagnostic {
+    path: string;
+    message: string;
+    line: number;
+    column: number;
+    severity: 'error' | 'warning';
+    offset: number;
+    length: number;
+}
+
+export type ResumeTemplate = 'classic' | 'modern' | 'compact';
+
 export interface PersonalInfo {
     fullName: string;
     email: string;
@@ -34,6 +49,7 @@ export interface PersonalInfo {
 
 export interface Experience {
     title: string;
+    description?: string;
     company: string;
     location?: string;
     startDate?: string;
@@ -70,7 +86,8 @@ export interface Certification {
 
 export interface Language {
     name: string;
-    level: 'native' | 'fluent' | 'advanced' | 'intermediate' | 'basic';
+    /** Free-form to preserve CEFR values and levels returned by resume translation/import. */
+    level: string;
 }
 
 // ATS Analysis Types

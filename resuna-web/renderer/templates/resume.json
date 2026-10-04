@@ -1,0 +1,58 @@
+{
+  "title": "Currículo de Ana Souza",
+  "personalInfo": {
+    "fullName": "Ana Souza",
+    "email": "ana.souza@example.com",
+    "phone": "+55 11 99999-1234",
+    "location": "São Paulo, SP",
+    "linkedin": "https://linkedin.com/in/anasouza",
+    "github": "https://github.com/anasouza",
+    "website": "https://anasouza.dev"
+  },
+  "summary": "Desenvolvedora de software com experiência na criação de aplicações web acessíveis e escaláveis. Colabora com equipes multidisciplinares para entregar produtos confiáveis, com atenção à qualidade, desempenho e necessidades das pessoas usuárias.",
+  "experience": [
+    {
+      "company": "Acme Tecnologia",
+      "title": "Desenvolvedora Front-end Sênior",
+      "location": "São Paulo, SP",
+      "startDate": "2022-03",
+      "endDate": "2026-09",
+      "current": false,
+      "description": "Liderou a modernização de uma plataforma digital usada por clientes em todo o Brasil.",
+      "bullets": [
+        "Reduziu o tempo de carregamento das páginas em 38% por meio de otimizações mensuráveis.",
+        "Desenvolveu componentes acessíveis com React e TypeScript e ampliou a cobertura de testes automatizados.",
+        "Trabalhou em parceria com produto e design para simplificar fluxos importantes da experiência."
+      ]
+    },
+    {
+      "company": "Estúdio Digital",
+      "title": "Desenvolvedora de Software",
+      "location": "Remoto",
+      "startDate": "2020-01",
+      "endDate": "2022-02",
+      "current": false,
+      "description": "Construiu funcionalidades para produtos web de diferentes segmentos.",
+      "bullets": ["Entregou melhorias em produção em colaboração com equipes distribuídas.", "Documentou decisões técnicas e apoiou a integração de novos integrantes."]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Painel de dados abertos",
+      "technologies": ["React", "TypeScript", "Node.js"],
+      "description": "Aplicação acessível que transforma conjuntos de dados públicos em informações úteis para a comunidade.",
+      "bullets": ["Implementou filtros, visualizações responsivas e testes de ponta a ponta."]
+    }
+  ],
+  "education": [
+    {
+      "degree": "Bacharelado em Sistemas de Informação",
+      "institution": "Universidade de São Paulo",
+      "location": "São Paulo, SP",
+      "graduationDate": "2019"
+    }
+  ],
+  "skills": ["React", "TypeScript", "JavaScript", "Acessibilidade", "Node.js", "APIs REST", "Testes automatizados", "Git"],
+  "certifications": [{ "name": "Desenvolvimento Web Acessível", "issuer": "Alura", "date": "2024" }],
+  "languages": [{ "name": "Português", "level": "Nativo" }, { "name": "Inglês", "level": "Avançado" }]
+}

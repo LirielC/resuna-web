@@ -1,4 +1,5 @@
 import type { Resume, CoverLetter } from './types';
+import { parseJsonc, parseResumeJsonc } from './resume/jsonc';
 
 let _currentUserId: string | null = null;
 
@@ -85,17 +86,29 @@ export const localResumeStorage = {
         window.localStorage.removeItem(resumesKey());
     },
 
-    exportJson(): string {
-        return JSON.stringify(this.getAll(), null, 2);
+    exportJsonc(): string {
+        return [
+            '// Resuna resume collection. JSONC supports comments and trailing commas.',
+            JSON.stringify(this.getAll().map((resume) => ({ schemaVersion: 1, ...resume })), null, 2),
+            '',
+        ].join('\n');
     },
 
-    importJson(json: string): { imported: number; skipped: number } {
+    importJsonc(json: string): { imported: number; skipped: number } {
         let incoming: Resume[];
         try {
-            incoming = JSON.parse(json);
-            if (!Array.isArray(incoming)) throw new Error('not array');
+            const parsed = parseJsonc<unknown>(json);
+            incoming = Array.isArray(parsed)
+                ? parsed.map((item) => parseResumeJsonc(JSON.stringify(item)))
+                : [parseResumeJsonc(json)];
         } catch {
-            throw new Error('Invalid JSON format');
+            try {
+                const parsed = JSON.parse(json);
+                if (!Array.isArray(parsed)) throw new Error('not array');
+                incoming = parsed.map((item) => parseResumeJsonc(JSON.stringify(item)));
+            } catch {
+                throw new Error('Invalid JSONC format');
+            }
         }
 
         const existing = this.getAll();
@@ -116,6 +129,9 @@ export const localResumeStorage = {
         writeJson(resumesKey(), existing);
         return { imported, skipped };
     },
+
+    exportJson(): string { return this.exportJsonc(); },
+    importJson(json: string): { imported: number; skipped: number } { return this.importJsonc(json); },
 };
 
 export const localCoverLetterStorage = {

@@ -15,6 +15,7 @@ spring:
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase-admin-key.json}
   project-id: ${FIREBASE_PROJECT_ID:resuna-app}
+  auth-project-id: ${FIREBASE_AUTH_PROJECT_ID:resuna-3abd6}
 
 # CORS Configuration
 cors:
@@ -27,6 +28,9 @@ cors:
 ats:
   engine:
     url: ${ATS_ENGINE_URL:http://localhost:8000}
+
+renderer:
+  url: ${TYPST_RENDERER_URL:}
 
 # OpenRouter AI Configuration
 openrouter:
