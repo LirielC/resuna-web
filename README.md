@@ -1,404 +1,252 @@
 # Resuna
 
-![Next.js](https://img.shields.io/badge/Next.js-15.5-black?style=flat-square&logo=next.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-green?style=flat-square&logo=springboot&logoColor=white)
-![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=openjdk&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-12.8-yellow?style=flat-square&logo=firebase&logoColor=black)
-![Python](https://img.shields.io/badge/Python-3.12-blue?style=flat-square&logo=python&logoColor=white)
-![Licenca](https://img.shields.io/badge/Licenca-MIT-brightgreen?style=flat-square)
+<p align="center">
+  <strong>An open-source, ATS-focused resume editor.</strong><br />
+  Create structured resumes, compare them with job descriptions, translate them, and export clean documents.
+</p>
 
-Editor de curriculos com IA, analise ATS e exportacao em PDF e DOCX. Gratuito e open source.
+<p align="center">
+  <img alt="Next.js 15" src="https://img.shields.io/badge/Next.js-15-black?logo=next.js&logoColor=white" />
+  <img alt="TypeScript 5.9" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Spring Boot 3" src="https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?logo=springboot&logoColor=white" />
+  <img alt="Go 1.22" src="https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white" />
+  <img alt="Python 3.11" src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" />
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-3DA639" />
+</p>
 
----
+## Overview
 
-## Conteudo
+Resuna helps people create readable, ATS-oriented resumes and tailor them to a job opportunity. The editor offers both a guided visual form and a JSONC source editor, with a live preview. Resume content is stored in the browser; authenticated backend services provide AI features, ATS analysis, quotas, and document rendering.
 
-- [Visao geral](#visao-geral)
-- [Arquitetura](#arquitetura)
-- [Funcionalidades](#funcionalidades)
-- [Tecnologias](#tecnologias)
-- [Estrutura do projeto](#estrutura-do-projeto)
-- [Requisitos](#requisitos)
-- [Configuracao local](#configuracao-local)
-- [Variaveis de ambiente](#variaveis-de-ambiente)
-- [Testes](#testes)
-- [Deploy](#deploy)
-- [Seguranca](#seguranca)
-- [Licenca](#licenca)
+All resume templates are designed for linear reading: one column, conventional sections, no profile photos, and no decorative layout elements in the exported resume.
 
----
+## Features
 
-## Visao geral
+- **Visual and JSONC editing** with a shared resume document and live preview.
+- **ATS analysis** that compares an uploaded PDF and a job description, returning a score, matching terms, gaps, and suggestions.
+- **AI assistance** for resume critique, bullet refinement, PDF import, and Portuguese-to-English translation.
+- **Document exports** as PDF and DOCX; PDF rendering is available through the Java service and the Go/Typst renderer.
+- **Three ATS-oriented themes:** Classic, Modern, and Compact. They vary typography and spacing, not the single-column reading order.
+- **Daily account limits:** up to five resume creations and four resume translations per user per UTC day.
+- **Two-page PDF limit:** generated resume PDFs exceeding two pages are rejected.
+- **Free and open source:** there are no paid plans in the product.
 
-O Resuna e um editor de curriculos com foco em gerar curriculos ATS e verifica-los. Oferece formulario estruturado, analise de compatibilidade com vagas, sugestoes via IA e exportacao para PDF e DOCX.
-
-Os curriculos sao armazenados localmente no navegador (localStorage). As operacoes de IA e exportacao passam pelo backend com autenticacao obrigatoria.
-
----
-
-## Arquitetura
+## Architecture
 
 ```mermaid
-graph TB
-    subgraph Cliente["Navegador (Next.js 15)"]
-        UI["Interface React"]
-        LS["localStorage (curriculos)"]
-        FA["Firebase Auth SDK"]
-    end
+flowchart LR
+    Browser["Browser\nNext.js / React"]
+    Auth["Firebase Authentication"]
+    Local["Browser localStorage\nResume documents"]
+    API["Spring Boot API\nJava 17"]
+    Firestore["Cloud Firestore\nQuotas and server data"]
+    AI["AI providers\nGemini / OpenRouter"]
+    ATS["ATS analysis service\nFastAPI / Python"]
+    Typst["PDF renderer\nGo + Typst"]
+    Run["Google Cloud Run"]
 
-    subgraph Backend["API (Spring Boot 3.2 / Java 17)"]
-        AC["AuthFilter + SecurityConfig"]
-        RC["ResumeController"]
-        AIC["AIController"]
-        ATSC["ATSController"]
-        ES["ExportService (PDF / DOCX)"]
-        ORS["OpenRouterService / GeminiService"]
-        SS["SubscriptionService (creditos)"]
-    end
-
-    subgraph ATS["Motor ATS (FastAPI / Python)"]
-        AE["ATSAnalysisEngine"]
-        NLP["spaCy + TF-IDF"]
-    end
-
-    subgraph Infra["Google Cloud"]
-        FS["Firestore (NoSQL)"]
-        FBAUTH["Firebase Auth"]
-        CR["Cloud Run"]
-    end
-
-    UI -->|JWT Bearer| AC
-    UI -->|leitura/escrita local| LS
-    FA -->|token Firebase| FBAUTH
-    AC --> RC
-    AC --> AIC
-    AC --> ATSC
-    AIC --> ORS
-    ATSC --> AE
-    AE --> NLP
-    RC --> ES
-    RC --> FS
-    SS --> FS
-    Backend --> CR
-    ATS --> CR
+    Browser -->|Sign-in| Auth
+    Browser <--> |Resume CRUD| Local
+    Browser -->|Firebase ID token| API
+    API --> Firestore
+    API --> AI
+    API --> ATS
+    API --> Typst
+    API -. deployed on .-> Run
+    ATS -. deployed on .-> Run
+    Typst -. deployed on .-> Run
 ```
 
----
+### Request and data flow
 
-## Funcionalidades
+1. The Next.js application renders the editor, resume library, ATS upload flow, and preview.
+2. Resume drafts are persisted in the user's browser using `localStorage`; the frontend obtains a Firebase ID token for protected operations.
+3. The Spring Boot API verifies authenticated requests and coordinates AI, ATS analysis, exports, and per-user daily quotas.
+4. The Python service performs job-description/resume analysis. The Java service can also provide a local ATS fallback if the separate engine is not configured.
+5. The Go service accepts resume data and a theme, renders Typst templates, and returns a PDF.
+6. Cloud Run hosts the backend services. Firebase Authentication handles sign-in, and Firestore stores server-side data such as daily quota records.
 
-### Editor de curriculos
+## Technology stack
 
-- Formulario estruturado: informacoes pessoais, resumo, experiencia, formacao, projetos, habilidades, certificacoes e idiomas
-- Calculo de completude em tempo real
-- Armazenamento automatico no navegador, isolado por conta de usuario
+| Area | Technologies | Purpose |
+| --- | --- | --- |
+| Web application | Next.js 15, React 18, TypeScript 5.9 | App Router, UI, and typed client logic |
+| Styling and interaction | Tailwind CSS 3, Framer Motion, Lucide | Styling, animation, and icons |
+| Resume editor | CodeMirror 6, `jsonc-parser` | JSONC editing, syntax support, and parsing |
+| Client authentication | Firebase JavaScript SDK | Google sign-in and Firebase ID tokens |
+| Java API | Java 17, Spring Boot 3.2, Maven | Authenticated REST API and business logic |
+| Firebase server SDK | Firebase Admin SDK, Cloud Firestore | Token verification and server-side persistence |
+| PDF and Word documents | Apache PDFBox, Apache POI | PDF processing/rendering and DOCX generation |
+| ATS engine | Python 3.11, FastAPI, spaCy, scikit-learn, NumPy, Pydantic | HTTP analysis service, NLP, and TF-IDF features |
+| Typst renderer | Go 1.22, Typst | Lightweight rendering service and PDF templates |
+| AI integrations | Gemini and OpenRouter integrations | Resume critique, refinement, and translation |
+| Deployment | Docker, Google Cloud Build, Google Cloud Run | Container builds and managed service hosting |
+| Testing | TypeScript compiler, JUnit 5 / Spring Test, Playwright | Type checks, backend tests, and browser tests |
 
-### Exportacao
+Exact dependency versions are maintained in `resuna-web/package.json`, `resuna-web/backend/pom.xml`, `resuna-web/backend/ats-engine/requirements.txt`, and `resuna-web/renderer/go.mod`.
 
-- PDF com formatacao profissional, fontes customizadas e links clicaveis
-- DOCX (Microsoft Word) com estilos de paragrafo e hiperlinks
-- Traducao do curriculo de portugues para ingles com exportacao imediata
+## Repository layout
 
-### Analise ATS
-
-- Pontuacao de 0 a 100 com detalhamento por categoria: palavras-chave, habilidades, experiencia, formacao e formatacao
-- Identificacao de lacunas e palavras-chave ausentes
-- Analise de PDF enviado diretamente (upload)
-- Extracao de palavras-chave de uma descricao de vaga (sem consumo de creditos)
-
-### Inteligencia artificial
-
-- Revisao critica do curriculo com pontos fortes, pontos fracos e sugestoes rapidas
-- Refinamento de topicos de experiencia com sugestoes especificas
-- Importacao de curriculo a partir de PDF existente
-
-### Creditos
-
-- 5 creditos de IA por usuario por dia, renovados a meia-noite no horario de Brasilia
-- Controle de abuso por IP e fingerprint na criacao de contas
-
----
-
-## Tecnologias
-
-### Frontend
-
-| Tecnologia | Versao | Finalidade |
-|---|---|---|
-| Next.js | 15.5 | Framework React com App Router |
-| React | 18.2 | Interface de usuario |
-| TypeScript | 5.9 | Tipagem estatica |
-| Tailwind CSS | 3.4 | Estilizacao |
-| Framer Motion | 11.0 | Animacoes |
-| Firebase SDK | 12.8 | Autenticacao |
-| Playwright | 1.58 | Testes end-to-end |
-
-### Backend
-
-| Tecnologia | Versao | Finalidade |
-|---|---|---|
-| Spring Boot | 3.2.2 | Framework Java |
-| Java | 17 | Linguagem |
-| Firebase Admin SDK | 9.2 | Autenticacao e Firestore |
-| Apache PDFBox | 3.0.1 | Geracao e leitura de PDF |
-| Apache POI | 5.2.5 | Geracao de DOCX |
-| OkHttp | 4.12 | Cliente HTTP (OpenRouter / Gemini) |
-| Maven | 3.9 | Build e dependencias |
-
-### Motor ATS (Python)
-
-| Tecnologia | Versao | Finalidade |
-|---|---|---|
-| FastAPI | 0.109 | API HTTP |
-| spaCy | 3.7 + `en_core_web_md` | NLP, reconhecimento de entidades |
-| scikit-learn | 1.4 | Vetorizacao TF-IDF |
-| numpy | 1.26 | Operacoes numericas |
-| Pydantic | 2.5 | Validacao de dados |
-
-### Infraestrutura
-
-| Servico | Uso |
-|---|---|
-| Google Cloud Run | Hospedagem do backend e do motor ATS |
-| Firebase Firestore | Banco de dados |
-| Firebase Authentication | Login com Google OAuth |
-| Cloudflare Turnstile | CAPTCHA anti-abuso nas operacoes de IA |
-
----
-
-## Estrutura do projeto
-
-```
+```text
 resuna-web/
 ├── src/
-│   ├── app/                        # Paginas (Next.js App Router)
-│   │   ├── page.tsx                # Landing page
-│   │   ├── login/
-│   │   ├── resumes/
-│   │   │   ├── page.tsx            # Lista de curriculos
-│   │   │   ├── create/             # Criacao de novo curriculo
-│   │   │   ├── [id]/               # Editor dinamico
-│   │   │   │   ├── page.tsx        # Editor principal
-│   │   │   │   ├── analyze/        # Revisor de curriculo (IA)
-│   │   │   └── import/pdf/         # Importacao de PDF
-│   │   ├── account/
-│   │   └── admin/
-│   ├── components/
-│   │   ├── layout/                 # Header
-│   │   └── ui/                     # Button, Card, Input, Toast...
-│   ├── contexts/
-│   │   ├── AuthContext.tsx
-│   │   └── LanguageContext.tsx
-│   └── lib/
-│       ├── api.ts                  # Cliente da API backend
-│       ├── storage.ts              # Persistencia local (localStorage)
-│       ├── completeness.ts         # Score de preenchimento
-│       ├── types.ts                # Tipos TypeScript
-│       └── firebase.ts             # Inicializacao do Firebase
+│   ├── app/                 # Next.js routes and pages
+│   ├── components/          # UI, editor, resume preview, and layout
+│   ├── contexts/            # Authentication and language contexts
+│   ├── hooks/               # Editor and integration hooks
+│   └── lib/                 # API client, Firebase, types, storage, JSONC
 ├── backend/
-│   ├── src/main/java/com/resuna/
-│   │   ├── controller/             # Controladores REST
-│   │   ├── service/                # Logica de negocio
-│   │   ├── model/                  # Modelos de dados
-│   │   ├── repository/             # Acesso ao Firestore
-│   │   ├── config/                 # Seguranca, CORS, rate limiting
-│   │   └── exception/              # Tratamento de excecoes
-│   ├── ats-engine/                 # Motor ATS (FastAPI/Python)
-│   │   ├── main.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
-│   └── pom.xml
-├── tests/e2e/                      # Testes Playwright
-├── public/
-├── Dockerfile
-├── next.config.js
-└── playwright.config.ts
+│   ├── src/main/java/       # Spring Boot API, controllers, services
+│   ├── src/test/java/       # Backend unit and integration tests
+│   └── ats-engine/          # Python/FastAPI ATS analysis service
+├── renderer/                # Go HTTP service and Typst templates
+├── tests/e2e/               # Playwright end-to-end tests
+├── Dockerfile               # Frontend container
+└── cloudbuild-frontend.yaml # Frontend Cloud Build configuration
 ```
 
----
+## Getting started
 
-## Requisitos
+### Prerequisites
 
-| Ferramenta | Versao minima |
-|---|---|
-| Node.js | 20 |
-| Java | 17 |
-| Maven | 3.9 |
-| Python | 3.12 |
-| Conta Firebase | Gratuita (Spark) |
-| Chave OpenRouter | Gratuita em [openrouter.ai](https://openrouter.ai) |
+- Node.js 20 or later and npm
+- Java 17 and Maven 3.9 or later
+- Python 3.11 for the ATS service
+- Go 1.22 and the Typst CLI for local renderer development
+- A Firebase project for authentication and backend integration
 
----
-
-## Configuracao local
-
-### 1. Clonar o repositorio
+### 1. Clone and install the frontend
 
 ```bash
 git clone https://github.com/LirielC/resuna-web.git
 cd resuna-web/resuna-web
+npm ci
 ```
 
-### 2. Configurar o frontend
+Create `.env.local` in the `resuna-web/` app directory with the Firebase **web app** configuration. `API_URL` configures the server-side Next.js API proxy; it is not exposed to the browser. Never put service-account private keys in frontend variables.
 
-```bash
-npm install
+```dotenv
+API_URL=http://localhost:8080
+NEXT_PUBLIC_FIREBASE_API_KEY=your-firebase-web-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-web-app-id
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 ```
 
-Crie o arquivo `.env.local` na pasta `resuna-web/`:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8080
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=      # deixe vazio para desabilitar CAPTCHA em dev
-```
+Start the web application:
 
 ```bash
 npm run dev
-# Disponivel em http://localhost:3000
 ```
 
-### 3. Configurar o backend
+Open <http://localhost:3000>.
+
+### 2. Run the Java API
+
+Configure Firebase Admin credentials using Application Default Credentials or the backend's supported credential configuration. Set the required provider/project settings for the features you want to run; keep private keys and AI provider keys outside the repository.
 
 ```bash
 cd backend
+mvn spring-boot:run
 ```
 
-Adicione o arquivo de credenciais do Firebase Admin SDK em:
-`backend/src/main/resources/firebase-admin-key.json`
+The API listens on <http://localhost:8080> by default. See `backend/src/main/resources/application.yml` and `application-prod.yml` for the configuration names and defaults used by the service.
 
-Para obter o arquivo: Console Firebase > Configuracoes do projeto > Contas de servico > Gerar nova chave privada.
+### 3. Run the ATS engine (optional)
 
-Configure as variaveis de ambiente (veja secao abaixo) e inicie:
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-# API disponivel em http://localhost:8080
-```
-
-### 4. Configurar o motor ATS (opcional)
-
-O motor ATS e utilizado apenas para analise de compatibilidade com vagas. Se nao for configurado, o backend usa uma implementacao local de fallback.
+The Java API has a local analysis fallback; run the separate Python service when you want to develop or test the standalone engine.
 
 ```bash
 cd backend/ats-engine
+python -m venv .venv
+# Activate .venv for your shell, then:
 pip install -r requirements.txt
 python -m spacy download en_core_web_md
 uvicorn main:app --reload --port 8000
 ```
 
----
+Configure the Java API's ATS engine URL to point to `http://localhost:8000` when using the standalone service.
 
-## Variaveis de ambiente
-
-### Frontend (`resuna-web/.env.local`)
-
-| Variavel | Obrigatorio | Descricao |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Sim | URL da API backend |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Sim | Chave publica do Firebase |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Sim | Dominio de autenticacao Firebase |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Sim | ID do projeto Firebase |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Sim | Bucket de storage Firebase |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Sim | ID do sender Firebase |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Sim | ID do app Firebase |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Nao | Site key do Cloudflare Turnstile |
-
-### Backend
-
-| Variavel | Obrigatorio | Descricao |
-|---|---|---|
-| `OPENROUTER_API_KEY` | Sim | Chave da API OpenRouter |
-| `GEMINI_API_KEY` | Nao | Chave da API Gemini (preferida para traducao) |
-| `FIREBASE_PROJECT_ID` | Sim | ID do projeto Firebase |
-| `FIREBASE_CREDENTIALS_PATH` | Nao | Caminho para o JSON de credenciais |
-| `SPRING_PROFILES_ACTIVE` | Nao | Perfil Spring: `dev` ou `prod` |
-| `TURNSTILE_SECRET_KEY` | Nao | Chave secreta do Cloudflare Turnstile |
-| `TURNSTILE_ENABLED` | Nao | Habilitar CAPTCHA (padrao: `true`) |
-| `CORS_ALLOWED_ORIGINS` | Nao | Origens permitidas para CORS |
-| `INITIAL_ADMIN_EMAIL` | Nao | Email que recebera permissao de admin automaticamente |
-| `ATS_ENGINE_URL` | Nao | URL do motor ATS externo (padrao: `http://localhost:8000`) |
-
----
-
-## Testes
-
-### Verificacao de tipos TypeScript
+### 4. Run the Typst renderer (optional)
 
 ```bash
-npx tsc --noEmit
+cd renderer
+go run .
 ```
 
-### Testes do backend (JUnit)
+The renderer uses the templates under `renderer/templates`. For containerized builds, its Dockerfile includes the Go build stage and Typst runtime image.
+
+## Configuration and secrets
+
+- Frontend configuration is read from `resuna-web/.env.local`; `NEXT_PUBLIC_*` values are bundled into client assets and must contain only browser-safe configuration.
+- Backend credentials (Firebase Admin, AI provider, Turnstile secret) must be provided through local environment/ADC or a managed secret store in production.
+- Do not commit `.env` files, service-account JSON, private keys, or production secrets. The repository `.gitignore` excludes common credential files.
+- Cloud Run services use separate configuration for the web app, Java API, ATS engine, and Typst renderer. Follow the checked-in Dockerfiles and Cloud Build configuration for the relevant component.
+
+## Development checks
+
+Frontend type checking:
+
+```bash
+cd resuna-web
+npm run typecheck
+```
+
+Frontend production build:
+
+```bash
+npm run build
+```
+
+Backend tests:
 
 ```bash
 cd resuna-web/backend
-mvn test -Dspring.profiles.active=dev
-# 135 testes, 0 falhas
+mvn test
 ```
 
-### Testes end-to-end (Playwright)
+End-to-end tests:
 
 ```bash
-# Instalar os navegadores na primeira execucao
-node_modules/.bin/playwright install chromium firefox
-
-npx playwright test --reporter=list
+cd resuna-web
+npx playwright install chromium
+npm run test:e2e
 ```
 
----
+The ATS service also includes `backend/ats-engine/test_analysis.py` for engine-level checks.
 
-## Deploy
+## Deployment
 
-O projeto inclui `Dockerfile` para o frontend e `backend/Dockerfile` para o backend. O script `deploy.sh` na raiz automatiza o build e o deploy para o Google Cloud Run.
+The application is designed to run as separate containers on Google Cloud Run. The repository includes Dockerfiles for the frontend, Java API, Python ATS engine, and Go/Typst renderer. The frontend also has a Cloud Build configuration in `resuna-web/cloudbuild-frontend.yaml`.
 
-```bash
-# Deploy completo (backend + frontend)
-bash deploy.sh
-```
-
-Para deploy manual:
+Deploy components independently so each service keeps its own runtime configuration and secrets. For example, deploy the Java API from `resuna-web/backend`:
 
 ```bash
-# Backend
-cd resuna-web/backend
 gcloud run deploy resuna-backend \
   --source . \
-  --project SEU_PROJETO_GCP \
-  --region us-central1
-
-# Frontend
-cd resuna-web
-gcloud run deploy resuna-frontend \
-  --source . \
-  --project SEU_PROJETO_GCP \
-  --region us-central1 \
-  --set-env-vars API_URL=https://resuna-backend-....run.app
+  --project YOUR_GCP_PROJECT_ID \
+  --region YOUR_REGION
 ```
 
----
+Before deploying the frontend, provide its public Firebase web configuration to the build. Configure backend-only secrets through Cloud Run/Secret Manager, not Docker build arguments or committed files. Refer to Google Cloud's deployment guidance and the checked-in build files for the service-specific commands.
 
-## Seguranca
+## Security
 
-- Autenticacao via Firebase Auth com tokens JWT verificados a cada requisicao
-- Isolamento de dados por usuario: cada curriculo e vinculado a um `userId` verificado no backend
-- Rate limiting por IP: 60 req/min geral, 5 req/min para endpoints de IA
-- CAPTCHA obrigatorio (Cloudflare Turnstile) nas operacoes de IA
-- Firestore com deny-by-default: clientes nao tem acesso direto aos dados de outros usuarios
-- Headers de seguranca: HSTS, CSP, X-Content-Type-Options, X-Frame-Options
-- IPs anonimizados nos logs (SHA-256), emails omitidos de telemetria
-- URLs sanitizadas antes de renderizar em PDF/DOCX
+- Protected API operations use Firebase authentication and server-side token verification.
+- Per-user daily quotas are enforced by the backend; browser-side checks are not the security boundary.
+- Uploaded PDFs and generated PDFs are handled by backend services, with generated resume PDFs limited to two pages.
+- Configure CORS, Turnstile, rate limits, and provider credentials for the production environment.
+- Do not include personal resume data, credentials, or generated production artifacts in issues or pull requests.
 
-Para relatar uma vulnerabilidade, consulte [SECURITY.md](resuna-web/SECURITY.md).
+Please report vulnerabilities privately using the contact details in [`resuna-web/SECURITY.md`](resuna-web/SECURITY.md), when available, rather than opening a public issue with exploit details.
 
----
+## Contributing
 
-## Licenca
+Bug reports and pull requests are welcome. For changes that affect resume parsing, ATS output, exports, or authentication, include tests and describe the behavior you verified. Never submit real personal resumes or secrets as fixtures.
 
-Distribuido sob a licenca MIT. Consulte o arquivo [LICENSE](LICENSE) para detalhes.
+## License
+
+Resuna is distributed under the MIT License. See [`LICENSE`](LICENSE).
