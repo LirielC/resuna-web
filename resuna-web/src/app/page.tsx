@@ -27,7 +27,7 @@ const features = [
 
 function ResumeSheet() {
   return (
-    <article aria-label="Exemplo de currículo sem imagens e em uma coluna" className="mx-auto w-full max-w-[510px] border border-stone-200 bg-white p-7 shadow-md sm:p-10 lg:rotate-[1.5deg]">
+    <article aria-label="Exemplo de currículo sem imagens e em uma coluna" className="relative z-10 mx-auto w-full max-w-[510px] border border-stone-200 bg-white p-7 shadow-md sm:p-10 lg:rotate-[1.5deg]">
       <header className="border-b border-stone-300 pb-4 text-center">
         <p className="font-display text-2xl font-semibold tracking-tight text-stone-900">Mariana Costa</p>
         <p className="mt-1 text-xs text-stone-600">Product Designer · São Paulo, SP · mariana@email.com</p>
@@ -86,9 +86,8 @@ export default function Home() {
             </div>
           </div>
           <div className="relative px-2 py-4 sm:px-8 lg:px-12">
-            <div aria-hidden="true" className="absolute inset-x-8 top-12 bottom-8 -rotate-3 border border-[#e8d8cc] bg-[#f0e5dc]" />
+            <div aria-hidden="true" className="absolute inset-x-8 top-12 bottom-8 z-0 -rotate-3 border border-[#e8d8cc] bg-[#f0e5dc]" />
             <ResumeSheet />
-            <p className="mx-auto mt-5 max-w-[510px] text-center text-xs text-stone-500">Um documento limpo, legível e sem elementos que atrapalham a leitura por sistemas de seleção.</p>
           </div>
         </section>
 
